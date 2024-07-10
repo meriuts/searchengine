@@ -24,7 +24,6 @@ import java.util.concurrent.ForkJoinPool;
 public class IndexServiceImpl implements IndexService {
     private final SitesList sites;
     private final PageNodeFactory pageNodeFactory;
-    private final PageNodeParser pageNodeParser;
     private final LinkCollectorFactory linkCollectorFactory;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;

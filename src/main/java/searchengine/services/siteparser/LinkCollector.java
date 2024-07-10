@@ -20,7 +20,7 @@ public class LinkCollector extends RecursiveAction {
     @Override
     protected void compute() {
         PageNode pageNode = pageNodeFactory.createPageNode(url);
-        pageNode.parsePage(url);
+        pageNode.parsePage();
 
 
         for (String childUrl: pageNode.getChildUrls()) {
