@@ -2,10 +2,7 @@ package searchengine.controllers;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import searchengine.dto.index.IndexResponse;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.index.IndexService;
@@ -29,5 +26,10 @@ public class ApiController {
     @GetMapping("/startIndexing")
     public ResponseEntity<IndexResponse> startIndexing() {
         return ResponseEntity.ok(indexService.startIndexing());
+    }
+
+    @GetMapping("/test/{t}")
+    public void test(@PathVariable String t) {
+        indexService.test(t);
     }
 }

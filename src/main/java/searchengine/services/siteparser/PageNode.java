@@ -1,76 +1,54 @@
 package searchengine.services.siteparser;
 
 import lombok.Data;
-import org.jsoup.Jsoup;
 import org.jsoup.Connection.Response;
+import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
-import searchengine.model.LinkHashEntity;
-import searchengine.model.PageHashEntity;
-import searchengine.repositories.LinkHashRepository;
-import searchengine.repositories.PageHashRepository;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Data
+@Component
+@Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class PageNode {
     private String url;
     private Set<String> childUrls;
-    private final PageHashRepository pageHashRepository;
-    private final LinkHashRepository linkHashRepository;
 
-    public PageNode(String url, PageHashRepository pageHashRepository, LinkHashRepository linkHashRepository) {
+    public PageNode(String url) {
         this.url = url;
         this.childUrls = new HashSet<>();
-        this.pageHashRepository = pageHashRepository;
-        this.linkHashRepository = linkHashRepository;
     }
 
     public void addChildUrl(String childUrl) {
         childUrls.add(childUrl);
     }
 
-    public void parsePage() {
+
+    @Cacheable(value = "myCache", key = "#url", sync = true)
+    public String parsePage(String url) {
         try {
             Thread.sleep(200);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
-        if (isLinkParse(url)) return;
-
-        try {
             System.out.println("parse " + url);
             Response response = Jsoup.connect(url)
                     .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
                     .referrer("http://www.google.com")
                     .execute();
-
             Document content = response.parse();
             findUrls(content).forEach(this::addChildUrl);
-
-            PageHashEntity pageHashEntity = new PageHashEntity(
-                    UUID.randomUUID().toString(),
-                    url,
-                    response.statusCode(),
-                    content.text(),
-                    childUrls);
-//            pageHashRepository.save(pageHashEntity);
-
+            return url;
         } catch (Exception e) {
             e.printStackTrace();
+            return url;
         }
-    }
-
-    private boolean isLinkParse(String url) {
-        if (linkHashRepository.existsById(url)) return true;
-        linkHashRepository.save(new LinkHashEntity(url));
-        return false;
     }
 
     private Set<String> findUrls(Document content) {

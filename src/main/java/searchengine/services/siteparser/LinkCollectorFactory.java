@@ -11,6 +11,6 @@ public class LinkCollectorFactory {
     }
 
     public LinkCollector createLinkCollector(String url) {
-        return new LinkCollector(url, pageNodeFactory);
+        return null;
     }
 }

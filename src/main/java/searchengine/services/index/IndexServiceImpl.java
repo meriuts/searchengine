@@ -1,6 +1,7 @@
 package searchengine.services.index;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
@@ -23,9 +24,16 @@ import java.util.concurrent.ForkJoinPool;
 public class IndexServiceImpl implements IndexService {
     private final SitesList sites;
     private final PageNodeFactory pageNodeFactory;
+    private final PageNodeParser pageNodeParser;
     private final LinkCollectorFactory linkCollectorFactory;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
+
+
+
+    public void test(String t) {
+        System.out.println("вызвали метод " + t);
+    }
 
     public IndexResponse startIndexing() {
 
@@ -40,9 +48,9 @@ public class IndexServiceImpl implements IndexService {
     private void startParsing(Site site) {
         SiteEntity siteEntity = mapToSiteEntity(site);
         siteRepository.save(siteEntity);
-        PageNode pageNode = pageNodeFactory.createPageNode(siteEntity.getUrl());
+
         ForkJoinPool forkJoinPool = new ForkJoinPool();
-        forkJoinPool.invoke(linkCollectorFactory.createLinkCollector(siteEntity.getUrl()));
+        forkJoinPool.invoke(new LinkCollector(siteEntity.getUrl(), pageNodeFactory));
 
 
 //        PageNode page = new PageNode(siteEntity.getUrl());
