@@ -3,6 +3,8 @@ package searchengine.model;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import searchengine.config.Site;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -10,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Data
-@Builder
+@NoArgsConstructor
 @Entity
 @Table(name = "sites")
 public class SiteEntity {
@@ -19,7 +21,7 @@ public class SiteEntity {
     @Column(name = "site_id")
     private Integer id;
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", columnDefinition = "ENUM('INDEXING', 'INDEXED')")
+    @Column(name = "status", columnDefinition = "ENUM('INDEXING', 'INDEXED', 'FAILED')")
     private SiteStatus status;
     @Column(name = "status_time")
     private LocalDateTime statusTime;
@@ -31,5 +33,15 @@ public class SiteEntity {
     private String name;
     @OneToMany(mappedBy = "siteId", cascade = CascadeType.ALL)
     private List<PageEntity> pageEntityList = new ArrayList<>();
+
+    public static SiteEntity mapToSiteEntity(Site site, SiteStatus status) {
+        SiteEntity siteEntity = new SiteEntity();
+        siteEntity.setStatus(status);
+        siteEntity.setStatusTime(LocalDateTime.now());
+        siteEntity.setUrl(site.getUrl());
+        siteEntity.setName(site.getName());
+
+        return siteEntity;
+    }
 
 }

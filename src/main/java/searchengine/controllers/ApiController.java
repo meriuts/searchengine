@@ -28,8 +28,8 @@ public class ApiController {
         return ResponseEntity.ok(indexService.startIndexing());
     }
 
-    @GetMapping("/test/{t}")
-    public void test(@PathVariable String t) {
-        indexService.test(t);
+    @GetMapping("/stopIndexing")
+    public ResponseEntity<IndexResponse> stopIndexing() {
+        return ResponseEntity.ok(indexService.stopIndexing());
     }
 }

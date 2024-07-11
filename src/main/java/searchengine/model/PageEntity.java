@@ -2,11 +2,13 @@ package searchengine.model;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import searchengine.services.siteparser.PageNode;
 
 import javax.persistence.*;
 
 @Data
-@Builder
+@NoArgsConstructor
 @Entity
 @Table(name = "pages")
 public class PageEntity {
@@ -22,4 +24,12 @@ public class PageEntity {
     private Integer statusCode;
     @Column(name = "content")
     private String pageContent;
+
+    private PageEntity mapToPageEntity(PageNode page) {
+        PageEntity pageEntity = new PageEntity();
+
+        return pageEntity;
+
+
+    }
 }

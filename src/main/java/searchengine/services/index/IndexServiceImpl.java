@@ -2,23 +2,21 @@ package searchengine.services.index;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import searchengine.config.Site;
 import searchengine.config.SitesList;
+import searchengine.dto.index.IndexErrorResponse;
 import searchengine.dto.index.IndexResponse;
-import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.model.SiteStatus;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
-import searchengine.services.siteparser.*;
+import searchengine.services.siteparser.LinkCollector;
+import searchengine.services.siteparser.LinkCollectorFactory;
+import searchengine.services.siteparser.PageNodeFactory;
 
 import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -31,72 +29,54 @@ public class IndexServiceImpl implements IndexService {
     private ForkJoinPool pool;
 
     private ForkJoinPool getPoolInstance() {
-        if(pool == null) {
+        if(pool == null || pool.isShutdown()) {
             pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
         }
         return pool;
-    }
-
-    public void test(String t) {
-        System.out.println("вызвали метод " + t);
     }
 
     @CacheEvict(value = "parsedUrl", allEntries = true)
     public IndexResponse startIndexing() {
         pool = getPoolInstance();
         if (pool.getActiveThreadCount() > 0) {
-            System.out.println("Индексация запущена");
-            return new IndexResponse();
+            return new IndexErrorResponse("Индексация уже запущена");
         }
+        siteRepository.deleteAll();
 
-        sites.getSites().forEach(site -> pool.execute(new LinkCollector(site.getUrl(), pageNodeFactory)));
-        System.out.println(pool.getParallelism());
+        sites.getSites().forEach(site -> {
+            SiteEntity siteEntity = SiteEntity.mapToSiteEntity(site, SiteStatus.INDEXING);
+            siteRepository.save(siteEntity);
+            pool.execute(new LinkCollector(site.getUrl(), pageNodeFactory));
+        });
 
-//        final ExecutorService executorServiceParser = Executors.newFixedThreadPool(3);
-//        sites.getSites().forEach(site ->
-//                executorServiceParser.submit(() -> startParsing(site))
-//        );
-
-
-
-        return null;
-    }
-    private void startParsing(Site site) {
-        SiteEntity siteEntity = mapToSiteEntity(site);
-        siteRepository.save(siteEntity);
-
-        ForkJoinPool forkJoinPool = new ForkJoinPool();
-        forkJoinPool.invoke(new LinkCollector(siteEntity.getUrl(), pageNodeFactory));
-
-
-//        PageNode page = new PageNode(siteEntity.getUrl());
-//        ForkJoinPool forkJoinPool = new ForkJoinPool();
-//        forkJoinPool.invoke(new LinkCollector(page, pageRepository));
-
-//        PageNode rootPageNode = new PageNode(siteEntity.getUrl());
-//        rootPageNode.parseAllPage();
-//        Map<String, Integer> lemmas = LemmaFinder.getInstance().collectLemmas(rootPageNode.getContent().text());
-//        rootPageNode.setLemmas(lemmas);
-//        ForkJoinPool forkJoinPool = new ForkJoinPool();
-//        forkJoinPool.invoke(new CollectorLinks(rootPageNode));
-//        while (!exit) {}
-//        forkJoinPool.shutdownNow();
+        return new IndexResponse();
     }
 
-    private SiteEntity mapToSiteEntity(Site site) {
-       return SiteEntity.builder()
-                .status(SiteStatus.INDEXING)
-                .statusTime(LocalDateTime.now())
-                .url(site.getUrl())
-                .name(site.getName())
-                .build();
+    public IndexResponse stopIndexing() {
+        pool = getPoolInstance();
+        if (pool.getActiveThreadCount() > 0) {
+            pool.shutdownNow();
+            try {
+                pool.awaitTermination(5, TimeUnit.SECONDS);
+            } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
+            }
+
+            for (SiteEntity siteEntity : siteRepository.findAll()) {
+                if(siteEntity.getStatus() != SiteStatus.INDEXED) {
+                    siteEntity.setErrorText("Индкесация остановлена пользователем");
+                    siteEntity.setStatus(SiteStatus.FAILED);
+                    siteEntity.setStatusTime(LocalDateTime.now());
+                    siteRepository.save(siteEntity);
+                }
+            }
+                return new IndexResponse();
+        }
+        return new IndexErrorResponse("Индексация не запущена");
     }
 
-    private PageEntity mapToPageEntity(PageNode page) {
-        return PageEntity.builder()
-                .path(page.getUrl())
-                .build();
 
-    }
+
+
 
 }

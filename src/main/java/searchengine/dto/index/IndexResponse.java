@@ -9,8 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class IndexResponse {
-    private boolean result;
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private String error;
+    private boolean result = true;
 
 }
