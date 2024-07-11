@@ -1,10 +1,12 @@
 package searchengine.model;
 
+import lombok.Builder;
 import lombok.Data;
 
 import javax.persistence.*;
 
 @Data
+@Builder
 @Entity
 @Table(name = "pages")
 public class PageEntity {
