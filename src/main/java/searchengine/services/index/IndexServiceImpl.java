@@ -1,6 +1,7 @@
 package searchengine.services.index;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import searchengine.config.Site;
@@ -27,20 +28,36 @@ public class IndexServiceImpl implements IndexService {
     private final LinkCollectorFactory linkCollectorFactory;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
+    private ForkJoinPool pool;
 
-
+    private ForkJoinPool getPoolInstance() {
+        if(pool == null) {
+            pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
+        }
+        return pool;
+    }
 
     public void test(String t) {
         System.out.println("вызвали метод " + t);
     }
 
+    @CacheEvict(value = "parsedUrl", allEntries = true)
     public IndexResponse startIndexing() {
+        pool = getPoolInstance();
+        if (pool.getActiveThreadCount() > 0) {
+            System.out.println("Индексация запущена");
+            return new IndexResponse();
+        }
+
+        sites.getSites().forEach(site -> pool.execute(new LinkCollector(site.getUrl(), pageNodeFactory)));
+        System.out.println(pool.getParallelism());
+
+//        final ExecutorService executorServiceParser = Executors.newFixedThreadPool(3);
+//        sites.getSites().forEach(site ->
+//                executorServiceParser.submit(() -> startParsing(site))
+//        );
 
 
-        final ExecutorService executorServiceParser = Executors.newFixedThreadPool(3);
-        sites.getSites().forEach(site ->
-                executorServiceParser.submit(() -> startParsing(site))
-        );
 
         return null;
     }

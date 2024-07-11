@@ -27,4 +27,5 @@ indexing-settings:
 #      name: Skillbox
     - url: https://www.playback.ru
       name: PlayBack.Ru
-
+    - url: https://opt-opt-opt.ru
+      name: Opt.Ru

@@ -8,10 +8,10 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class PageNodeFactory {
     private final PageParser pageParser;
-    private final CacheManager cacheManager;
+    private final CacheManager redisCacheManager;
 
     public PageNode createPageNode(String url) {
-        return new PageNode(url, pageParser, cacheManager);
+        return new PageNode(url, pageParser, redisCacheManager);
     }
 
 }

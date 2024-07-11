@@ -5,6 +5,7 @@ import org.jsoup.Connection.Response;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
+import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import searchengine.config.Site;
@@ -19,17 +20,18 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@CacheConfig(cacheManager = "redisCacheManager")
 public class PageParser {
     private final SitesList sites;
 
-    @Cacheable(value = "myCache", key = "#url", sync = true)
+    @Cacheable(value = "parsedUrl", key = "#url")
     public Set<String> startParsing(String url) {
         try {
             Thread.sleep(200);
             System.out.println("parse " + url);
             Response response = Jsoup.connect(url)
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
-                    .referrer("http://www.google.com")
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36")
+                    .referrer("https://ya.ru/")
                     .execute();
 
             Document content = response.parse();

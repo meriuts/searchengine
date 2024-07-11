@@ -18,18 +18,18 @@ public class PageNode {
     private String url;
     private Set<String> childUrls;
     private PageParser pageParser;
-    private CacheManager cacheManager;
+    private CacheManager redisCacheManager;
 
     @Autowired
-    public PageNode(String url, PageParser pageParser, CacheManager cacheManager) {
+    public PageNode(String url, PageParser pageParser, CacheManager redisCacheManager) {
         this.url = url;
         this.childUrls = new HashSet<>();
         this.pageParser = pageParser;
-        this.cacheManager = cacheManager;
+        this.redisCacheManager = redisCacheManager;
     }
 
     public void parsePage() {
-        Cache cache = cacheManager.getCache("myCache");
+        Cache cache = redisCacheManager.getCache("parsedUrl");
         if (cache != null && cache.get(url) != null) {
             return;
         }
