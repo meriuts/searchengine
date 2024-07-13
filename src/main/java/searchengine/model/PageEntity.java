@@ -13,12 +13,11 @@ import java.util.Objects;
 @Entity
 @Table(
         name = "pages",
-        indexes = @Index(name = "fn_index_path", columnList = "path"))
-//,
-//        uniqueConstraints = @UniqueConstraint(name = "uniquePath", columnNames = {"site_id", "path"})
+        indexes = @Index(name = "fn_index_path", columnList = "path"),
+        uniqueConstraints = @UniqueConstraint(name = "uniquePath", columnNames = {"site_id", "path"}))
 public class PageEntity implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     @ManyToOne
     @JoinColumn(name = "site_id", referencedColumnName = "site_id")

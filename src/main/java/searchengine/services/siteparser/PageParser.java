@@ -8,9 +8,11 @@ import org.jsoup.select.Elements;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.model.PageEntity;
+import searchengine.model.SiteEntity;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 
@@ -33,9 +35,17 @@ public class PageParser {
 
     @Cacheable(value = "parsedUrl", key = "#url")
     public Set<String> startParsing(String url) {
+
         try {
             Thread.sleep(200);
             System.out.println("parse " + url);
+
+            String path = new URL(url).getPath();
+            SiteEntity siteEntity = siteRepository.findByUrl(new URL(url).getHost());
+            if (!pageRepository.findByPathAndSiteId(path, siteEntity).isEmpty()) {
+                return new HashSet<>();
+            }
+
             Response response = Jsoup.connect(url)
                     .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36")
                     .referrer("https://ya.ru/")
@@ -43,17 +53,23 @@ public class PageParser {
             Document content = response.parse();
 
             PageEntity pageEntity = new PageEntity();
-            pageEntity.setSiteId(siteRepository.findByUrl(new URL(url).getHost()));
-            pageEntity.setPath(new URL(url).getPath());
+            pageEntity.setSiteId(siteEntity);
+            pageEntity.setPath(path);
             pageEntity.setStatusCode(response.statusCode());
             pageEntity.setPageContent(content.text());
 
-            pageRepository.save(pageEntity);
+           savePage(pageEntity);
 
             return findUrls(content);
         } catch (Exception e) {
-            e.printStackTrace();
-            return new HashSet<>();
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Transactional
+    public void savePage(PageEntity pageEntity) {
+        if (pageRepository.findByPathAndSiteId(pageEntity.getPath(), pageEntity.getSiteId()).isEmpty()) {
+            pageRepository.save(pageEntity);
         }
     }
 

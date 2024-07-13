@@ -19,7 +19,7 @@ import java.util.List;
 @Table(name = "sites")
 public class SiteEntity implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "site_id")
     private Integer id;
     @Enumerated(EnumType.STRING)

@@ -35,7 +35,7 @@ public class IndexServiceImpl implements IndexService {
         return pool;
     }
 
-    @CacheEvict(value = "parsedUrl", allEntries = true)
+    @CacheEvict(value = {"parsedUrl", "page", "site"}, allEntries = true)
     public IndexResponse startIndexing() {
         pool = getPoolInstance();
         if (pool.getActiveThreadCount() > 0) {
