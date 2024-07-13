@@ -10,6 +10,9 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
+import searchengine.model.PageEntity;
+import searchengine.repositories.PageRepository;
+import searchengine.repositories.SiteRepository;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -23,6 +26,10 @@ import java.util.stream.Collectors;
 @CacheConfig(cacheManager = "redisCacheManager")
 public class PageParser {
     private final SitesList sites;
+    private final PageRepository pageRepository;
+    private final SiteRepository siteRepository;
+
+
 
     @Cacheable(value = "parsedUrl", key = "#url")
     public Set<String> startParsing(String url) {
@@ -33,11 +40,17 @@ public class PageParser {
                     .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36")
                     .referrer("https://ya.ru/")
                     .execute();
-
             Document content = response.parse();
-            Set<String> childUrl = findUrls(content);
 
-            return childUrl;
+            PageEntity pageEntity = new PageEntity();
+            pageEntity.setSiteId(siteRepository.findByUrl(new URL(url).getHost()));
+            pageEntity.setPath(new URL(url).getPath());
+            pageEntity.setStatusCode(response.statusCode());
+            pageEntity.setPageContent(content.text());
+
+            pageRepository.save(pageEntity);
+
+            return findUrls(content);
         } catch (Exception e) {
             e.printStackTrace();
             return new HashSet<>();

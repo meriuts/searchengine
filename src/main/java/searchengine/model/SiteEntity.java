@@ -4,9 +4,11 @@ package searchengine.model;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import searchengine.config.Site;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,9 +17,9 @@ import java.util.List;
 @NoArgsConstructor
 @Entity
 @Table(name = "sites")
-public class SiteEntity {
+public class SiteEntity implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
     @Column(name = "site_id")
     private Integer id;
     @Enumerated(EnumType.STRING)
@@ -31,7 +33,8 @@ public class SiteEntity {
     private String url;
     @Column(name = "name", columnDefinition = "VARCHAR(255)")
     private String name;
-    @OneToMany(mappedBy = "siteId", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "siteId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ToString.Exclude
     private List<PageEntity> pageEntityList = new ArrayList<>();
 
     public static SiteEntity mapToSiteEntity(Site site, SiteStatus status) {
