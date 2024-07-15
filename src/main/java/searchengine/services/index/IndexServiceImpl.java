@@ -11,7 +11,6 @@ import searchengine.model.SiteStatus;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 import searchengine.services.siteparser.LinkCollector;
-import searchengine.services.siteparser.LinkCollectorFactory;
 import searchengine.services.siteparser.PageNodeFactory;
 
 import java.time.LocalDateTime;
@@ -23,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 public class IndexServiceImpl implements IndexService {
     private final SitesList sites;
     private final PageNodeFactory pageNodeFactory;
-    private final LinkCollectorFactory linkCollectorFactory;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
     private ForkJoinPool pool;

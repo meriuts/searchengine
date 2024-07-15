@@ -1,14 +1,17 @@
 package searchengine.model;
 
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import searchengine.services.siteparser.PageNode;
 
 import javax.persistence.*;
 import java.io.Serializable;
 import java.util.Objects;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @Entity
 @Table(
@@ -29,11 +32,6 @@ public class PageEntity implements Serializable {
     @Column(name = "content", columnDefinition = "MEDIUMTEXT")
     private String pageContent;
 
-    private PageEntity mapToPageEntity(PageNode page) {
-        PageEntity pageEntity = new PageEntity();
-
-        return pageEntity;
-    }
 
     @Override
     public boolean equals(Object o) {

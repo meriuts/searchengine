@@ -32,7 +32,6 @@ public class PageParser {
     private final SiteRepository siteRepository;
 
 
-
     @Cacheable(value = "parsedUrl", key = "#url")
     public Set<String> startParsing(String url) {
 
@@ -58,7 +57,7 @@ public class PageParser {
             pageEntity.setStatusCode(response.statusCode());
             pageEntity.setPageContent(content.text());
 
-           savePage(pageEntity);
+            savePage(pageEntity);
 
             return findUrls(content);
         } catch (Exception e) {
@@ -85,10 +84,10 @@ public class PageParser {
     private boolean linkIsValid(String link) {
         List<String> urls = sites.getSites().stream().map(Site::getUrl).toList();
         try {
-            for(String url: urls) {
+            for (String url : urls) {
                 String host = new URL(url).getHost();
                 String urlFormatRegex = String.format("https?://%s[^,\\s?]+(?<!\\.(?:jpg|png|gif|pdf))(?<!#)", host);
-                if(link.matches(urlFormatRegex)) return true;
+                if (link.matches(urlFormatRegex)) return true;
             }
             return false;
         } catch (MalformedURLException e) {
