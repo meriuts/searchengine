@@ -17,4 +17,10 @@ public interface PageRepository extends JpaRepository<PageEntity, Integer> {
 
     @Query("SELECT p FROM PageEntity p WHERE p.path LIKE %:path% AND p.siteId = :siteId")
     Optional<PageEntity> findByPathAndSiteId(String path, SiteEntity siteId);
+
+    @Query("SELECT p FROM PageEntity p WHERE p.path LIKE %:path% AND p.siteId = :siteId")
+    PageEntity deleteByPathAndSiteId(String path, SiteEntity siteId);
+
+    @Query("SELECT p FROM PageEntity p WHERE p.id = :id")
+    void deleteById(Integer id);
 }

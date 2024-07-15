@@ -5,6 +5,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import searchengine.config.SitesList;
 import searchengine.dto.index.IndexErrorResponse;
+import searchengine.dto.index.IndexRequest;
 import searchengine.dto.index.IndexResponse;
 import searchengine.model.SiteEntity;
 import searchengine.model.SiteStatus;
@@ -33,6 +34,7 @@ public class IndexServiceImpl implements IndexService {
         return pool;
     }
 
+    @Override
     @CacheEvict(value = {"parsedUrl", "page", "site"}, allEntries = true)
     public IndexResponse startIndexing() {
         pool = getPoolInstance();
@@ -50,6 +52,7 @@ public class IndexServiceImpl implements IndexService {
         return new IndexResponse();
     }
 
+    @Override
     public IndexResponse stopIndexing() {
         pool = getPoolInstance();
         if (pool.getActiveThreadCount() > 0) {
@@ -71,6 +74,15 @@ public class IndexServiceImpl implements IndexService {
                 return new IndexResponse();
         }
         return new IndexErrorResponse("Индексация не запущена");
+    }
+
+    @Override
+    public IndexResponse indexPage(IndexRequest url) {
+        pageNodeFactory
+                .createPageNode(url.getUrl())
+                .parsePage(url.getUrl());
+
+        return new IndexResponse();
     }
 
 

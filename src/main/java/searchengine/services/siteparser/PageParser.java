@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
+import searchengine.dto.index.IndexErrorResponse;
+import searchengine.dto.index.IndexResponse;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.repositories.PageRepository;
@@ -20,6 +22,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -30,7 +33,6 @@ public class PageParser {
     private final SitesList sites;
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
-
 
     @Cacheable(value = "parsedUrl", key = "#url")
     public Set<String> startParsing(String url) {
@@ -64,6 +66,44 @@ public class PageParser {
             throw new RuntimeException(e);
         }
     }
+
+    public IndexResponse startParsingOnePage(String url) {
+        String urlFormat = "https?://[^,\\s?]+(?<!\\.(?:jpg|png|gif|pdf))(?<!#)";
+        if (!url.matches(urlFormat)) {
+            return new IndexErrorResponse("Указан неверный формат ссылки (required: http(s)://)");
+        }
+
+        if (!linkIsValid(url)) {
+            return new IndexErrorResponse("Страница находится за пределами сайтов, указанных в конфигурационном файле");
+        }
+
+        try {
+            String path = new URL(url).getPath();
+            SiteEntity siteEntity = siteRepository.findByUrl(new URL(url).getHost());
+
+            Optional<PageEntity> pageEntity = pageRepository.findByPathAndSiteId(path, siteEntity);
+            pageEntity.ifPresent(entity -> pageRepository.deleteById(entity.getId()));
+
+            Response response = Jsoup.connect(url)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36")
+                    .referrer("https://ya.ru/")
+                    .execute();
+            Document content = response.parse();
+
+            PageEntity parsingPageEntity = new PageEntity();
+            parsingPageEntity.setSiteId(siteEntity);
+            parsingPageEntity.setPath(path);
+            parsingPageEntity.setStatusCode(response.statusCode());
+            parsingPageEntity.setPageContent(content.text());
+
+            savePage(parsingPageEntity);
+
+            return new IndexResponse();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
     @Transactional
     public void savePage(PageEntity pageEntity) {
