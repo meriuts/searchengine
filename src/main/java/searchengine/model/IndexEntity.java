@@ -10,7 +10,9 @@ import javax.persistence.*;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "page_index")
+@Table(
+        name = "page_index",
+        uniqueConstraints = @UniqueConstraint(name = "uniqueLemma", columnNames = {"lemma_id", "page_id"}))
 public class IndexEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,5 +25,5 @@ public class IndexEntity {
     @JoinColumn(name = "lemma_id", referencedColumnName = "id")
     private LemmaEntity lemmaId;
     @Column(name = "lemma_rank")
-    private Double rank;
+    private Integer rank;
 }

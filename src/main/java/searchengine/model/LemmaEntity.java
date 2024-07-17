@@ -12,7 +12,9 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "lemma")
+@Table(
+        name = "lemma",
+        indexes = @Index(name = "fn_lemma_path", columnList = "lemma"))
 public class LemmaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

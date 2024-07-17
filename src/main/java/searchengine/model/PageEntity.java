@@ -4,9 +4,12 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jsoup.Connection.Response;
+import org.jsoup.nodes.Document;
 import searchengine.services.siteparser.PageNode;
 
 import javax.persistence.*;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -31,6 +34,16 @@ public class PageEntity implements Serializable {
     private Integer statusCode;
     @Column(name = "content", columnDefinition = "MEDIUMTEXT")
     private String pageContent;
+
+    public static PageEntity mapToPageEntity(SiteEntity siteId, Response response, Document content) throws IOException {
+        PageEntity pageEntity = new PageEntity();
+        pageEntity.setSiteId(siteId);
+        pageEntity.setPath(response.url().getPath());
+        pageEntity.setStatusCode(response.statusCode());
+        pageEntity.setPageContent(content.text());
+
+        return pageEntity;
+    }
 
 
     @Override

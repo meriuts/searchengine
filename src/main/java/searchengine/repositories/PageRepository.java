@@ -12,7 +12,7 @@ import java.util.Optional;
 @Repository
 public interface PageRepository extends JpaRepository<PageEntity, Integer> {
     @Override
-    @Cacheable(value = "page", key = "#entity.path + ':' + #entity.siteId.id")
+//    @Cacheable(value = "page", key = "#entity.path + ':' + #entity.siteId.id")
     PageEntity save(PageEntity entity);
 
     @Query("SELECT p FROM PageEntity p WHERE p.path LIKE %:path% AND p.siteId = :siteId")
@@ -21,6 +21,4 @@ public interface PageRepository extends JpaRepository<PageEntity, Integer> {
     @Query("SELECT p FROM PageEntity p WHERE p.path LIKE %:path% AND p.siteId = :siteId")
     PageEntity deleteByPathAndSiteId(String path, SiteEntity siteId);
 
-    @Query("SELECT p FROM PageEntity p WHERE p.id = :id")
-    void deleteById(Integer id);
 }

@@ -6,6 +6,7 @@ import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
 import java.io.IOException;
 import java.util.*;
 
+
 public class LemmaFinder {
 
     private final LuceneMorphology luceneMorphology;

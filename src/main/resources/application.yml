@@ -18,7 +18,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
 
 
@@ -33,5 +33,5 @@ indexing-settings:
 #      name: Skillbox
     - url: https://www.playback.ru
       name: PlayBack.Ru
-    - url: https://opt-opt-opt.ru
-      name: Opt.Ru
+#    - url: https://opt-opt-opt.ru
+#      name: Opt.Ru

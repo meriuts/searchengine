@@ -78,11 +78,9 @@ public class IndexServiceImpl implements IndexService {
 
     @Override
     public IndexResponse indexPage(IndexRequest url) {
-        pageNodeFactory
+        return pageNodeFactory
                 .createPageNode(url.getUrl())
                 .parsePage(url.getUrl());
-
-        return new IndexResponse();
     }
 
 
