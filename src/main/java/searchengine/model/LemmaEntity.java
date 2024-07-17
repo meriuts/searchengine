@@ -7,6 +7,7 @@ import lombok.Setter;
 import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -29,4 +30,5 @@ public class LemmaEntity {
     private Integer frequency;
     @OneToMany(mappedBy = "lemmaId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<IndexEntity> indexEntityList = new ArrayList<>();
+
 }

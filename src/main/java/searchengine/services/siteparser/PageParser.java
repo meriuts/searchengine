@@ -97,11 +97,8 @@ public class PageParser {
     @Transactional
     private void save(PageEntity pageEntity, Map<String, Integer> lemmas) {
         PageEntity page = savePage(pageEntity);
-        //нужен мультиинсерт - в в цыкле по одной записи сохранять очень долдго будет
-        for (Map.Entry<String, Integer> lemmaEntry : lemmas.entrySet()) {
-            LemmaEntity lemmaEntity = saveLemma(lemmaEntry.getKey(), page);
-            saveIndex(page, lemmaEntity, lemmaEntry.getValue());
-        }
+        List<LemmaEntity> lemmaEntityList = saveLemmas(page, lemmas);
+        saveIndexes(page, lemmaEntityList, lemmas);
     }
 
     @Transactional
@@ -114,33 +111,39 @@ public class PageParser {
     }
 
     @Transactional
-    private LemmaEntity saveLemma (String lemma, PageEntity pageEntity) {
-        Optional<LemmaEntity> existingLemma = lemmaRepository.findByLemmaAndSiteId(lemma, pageEntity.getSiteId());
-        if (existingLemma.isPresent()) {
-            LemmaEntity lemmaEntity = existingLemma.get();
-            lemmaEntity.setFrequency(lemmaEntity.getFrequency() + 1);
-            return lemmaRepository.save(lemmaEntity);
+    private List<LemmaEntity> saveLemmas (PageEntity pageEntity, Map<String, Integer> lemmas) {
+        List<LemmaEntity> lemmaEntityList = new ArrayList<>();
+        for (Map.Entry<String, Integer> lemmaEntry: lemmas.entrySet()) {
+            Optional<LemmaEntity> existingLemma =
+                    lemmaRepository.findByLemmaAndSiteId(lemmaEntry.getKey(), pageEntity.getSiteId());
+            if (existingLemma.isPresent()) {
+                LemmaEntity lemmaEntity = existingLemma.get();
+                lemmaEntity.setFrequency(lemmaEntity.getFrequency() + 1);
+                lemmaEntityList.add(lemmaEntity);
+            } else {
+                LemmaEntity lemmaEntity = new LemmaEntity();
+                lemmaEntity.setSiteId(pageEntity.getSiteId());
+                lemmaEntity.setLemma(lemmaEntry.getKey());
+                lemmaEntity.setFrequency(1);
+                lemmaEntityList.add(lemmaEntity);
+            }
         }
-        LemmaEntity lemmaEntity = new LemmaEntity();
-        lemmaEntity.setSiteId(pageEntity.getSiteId());
-        lemmaEntity.setLemma(lemma);
-        lemmaEntity.setFrequency(1);
-        return lemmaRepository.save(lemmaEntity);
+        return lemmaRepository.saveAll(lemmaEntityList);
     }
-
 
     @Transactional
-    private IndexEntity saveIndex(PageEntity pageEntity, LemmaEntity lemmaEntity, Integer lemmaRank) {
-        IndexEntity indexEntity = new IndexEntity();
-        indexEntity.setPageId(pageEntity);
-        indexEntity.setLemmaId(lemmaEntity);
-        indexEntity.setRank(lemmaRank);
-
-        return indexRepository.save(indexEntity);
+    private List<IndexEntity> saveIndexes(PageEntity pageEntity, List<LemmaEntity> lemmaEntities, Map<String, Integer> lemmas) {
+        List<IndexEntity> indexEntityList = new ArrayList<>();
+        for (LemmaEntity lemmaEntity : lemmaEntities) {
+            Integer lemmaRank = lemmas.get(lemmaEntity.getLemma());
+            IndexEntity indexEntity = new IndexEntity();
+            indexEntity.setPageId(pageEntity);
+            indexEntity.setLemmaId(lemmaEntity);
+            indexEntity.setRank(lemmaRank);
+            indexEntityList.add(indexEntity);
+        }
+        return indexRepository.saveAll(indexEntityList);
     }
-
-
-
 
     private Response executePageInfo(String url) throws IOException {
         return Jsoup.connect(url)
