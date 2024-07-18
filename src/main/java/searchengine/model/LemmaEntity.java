@@ -14,7 +14,7 @@ import java.util.Map;
 @NoArgsConstructor
 @Entity
 @Table(
-        name = "lemma",
+        name = "lemmas",
         indexes = @Index(name = "fn_lemma_path", columnList = "lemma"))
 public class LemmaEntity {
     @Id
@@ -30,5 +30,14 @@ public class LemmaEntity {
     private Integer frequency;
     @OneToMany(mappedBy = "lemmaId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<IndexEntity> indexEntityList = new ArrayList<>();
+
+    public static LemmaEntity getLemmaEntity(SiteEntity siteId, String lemma) {
+        LemmaEntity lemmaEntity = new LemmaEntity();
+        lemmaEntity.setSiteId(siteId);
+        lemmaEntity.setLemma(lemma);
+        lemmaEntity.setFrequency(1);
+
+        return lemmaEntity;
+    }
 
 }

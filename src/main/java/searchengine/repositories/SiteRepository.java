@@ -11,7 +11,7 @@ import java.util.Optional;
 @Repository
 public interface SiteRepository extends JpaRepository<SiteEntity, Integer> {
 
-    @Cacheable(value = "site", key = "#host")
+//    @Cacheable(value = "site", key = "#host")
     @Query("SELECT s FROM SiteEntity s WHERE s.url LIKE %:host%")
     SiteEntity findByUrl(String host);
 

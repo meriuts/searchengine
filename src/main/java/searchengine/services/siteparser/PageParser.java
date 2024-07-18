@@ -5,6 +5,7 @@ import org.jsoup.Connection.Response;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
+import org.springframework.beans.BeanUtils;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -17,10 +18,7 @@ import searchengine.model.IndexEntity;
 import searchengine.model.LemmaEntity;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
-import searchengine.repositories.IndexRepository;
-import searchengine.repositories.LemmaRepository;
-import searchengine.repositories.PageRepository;
-import searchengine.repositories.SiteRepository;
+import searchengine.repositories.*;
 import searchengine.services.contentparser.LemmaFinder;
 
 import java.io.IOException;
@@ -28,6 +26,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +37,7 @@ public class PageParser {
     private final SiteRepository siteRepository;
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
+    private final LemmaRepositoryNative lemmaRepositoryNative;
 
     @Cacheable(value = "parsedUrl", key = "#url")
     public Set<String> startParsing(String url) {
@@ -81,11 +81,27 @@ public class PageParser {
                 return new IndexErrorResponse("Сайт не был индексирован");
             }
 
+            if (pageRepository.findByPathAndSiteId(path, siteEntity).isPresent()) {
+                return new IndexErrorResponse("Страница сайта уже проиндексирована");
+            }
+
             Response response = executePageInfo(url);
             Document content = response.parse();
             PageEntity pageEntity = PageEntity.mapToPageEntity(siteEntity, response, content);
             Map<String, Integer> lemmas = LemmaFinder.getInstance().collectLemmas(pageEntity.getPageContent());
-            save(pageEntity, lemmas);
+
+            int part = 20;
+            int total = lemmas.entrySet().size();
+            List<Map.Entry<String, Integer>> entryList = lemmas.entrySet().stream().toList();
+
+            List<List<Map.Entry<String, Integer>>> lemmaEntries = IntStream
+                            .range(0, (total + part - 1) / part)
+                            .mapToObj(i -> entryList.subList(i * part, Math.min(total, (i + 1) * part)))
+                            .collect(Collectors.toList());
+
+           //Положить в одну транзакцию
+            PageEntity page = pageRepository.save(pageEntity);
+            lemmaEntries.parallelStream().forEach(e -> save(page, e));
 
             return new IndexResponse();
         } catch (Exception e) {
@@ -95,10 +111,16 @@ public class PageParser {
 
 
     @Transactional
-    private void save(PageEntity pageEntity, Map<String, Integer> lemmas) {
-        PageEntity page = savePage(pageEntity);
-        List<LemmaEntity> lemmaEntityList = saveLemmas(page, lemmas);
-        saveIndexes(page, lemmaEntityList, lemmas);
+    private void save(PageEntity pageEntity, List<Map.Entry<String, Integer>> lemmaEntries) {
+        List<LemmaEntity> lemmaEntityList = new ArrayList<>();
+        for (Map.Entry<String, Integer> lemmaEntry : lemmaEntries) {
+            LemmaEntity lemmaEntity = LemmaEntity.getLemmaEntity(pageEntity.getSiteId(), lemmaEntry.getKey());
+            lemmaEntityList.add(lemmaEntity);
+        }
+        lemmaRepository.saveAll(lemmaEntityList);
+//        List<String> lemmas = lemmaEntries.stream().map(Map.Entry::getKey).toList();
+//        List<LemmaEntity> existingLemmaEntities =
+//                lemmaRepositoryNative.findAllByLemmaInAndSiteIdForUpdate(lemmas, pageEntity.getSiteId().getId());
     }
 
     @Transactional
@@ -113,11 +135,20 @@ public class PageParser {
     @Transactional
     private List<LemmaEntity> saveLemmas (PageEntity pageEntity, Map<String, Integer> lemmas) {
         List<LemmaEntity> lemmaEntityList = new ArrayList<>();
-        for (Map.Entry<String, Integer> lemmaEntry: lemmas.entrySet()) {
-            Optional<LemmaEntity> existingLemma =
-                    lemmaRepository.findByLemmaAndSiteId(lemmaEntry.getKey(), pageEntity.getSiteId());
-            if (existingLemma.isPresent()) {
-                LemmaEntity lemmaEntity = existingLemma.get();
+        //попробовать сделать через беан утил - создаем шаблон объекта - если объект ест мапим его на созданные шаблон
+
+        List<LemmaEntity> existingLemmaEntityList =
+                lemmaRepository.findAllByLemmaInAndSiteId(lemmas.keySet(), pageEntity.getSiteId());
+
+        List<String> existingLemma = existingLemmaEntityList.stream()
+                .map(LemmaEntity::getLemma).toList();
+
+        for (Map.Entry<String, Integer> lemmaEntry : lemmas.entrySet()) {
+            if (existingLemma.contains(lemmaEntry.getKey())) {
+                LemmaEntity lemmaEntity = existingLemmaEntityList.stream()
+                        .filter(entity -> lemmaEntry.getKey().equals(entity.getLemma()))
+                        .findFirst()
+                        .orElseThrow();
                 lemmaEntity.setFrequency(lemmaEntity.getFrequency() + 1);
                 lemmaEntityList.add(lemmaEntity);
             } else {
