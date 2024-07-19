@@ -1,5 +1,6 @@
 package searchengine.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,4 +27,10 @@ public class IndexEntity {
     private LemmaEntity lemmaId;
     @Column(name = "lemma_rank")
     private Integer rank;
+
+    public IndexEntity(PageEntity pageId, LemmaEntity lemmaId, Integer rank) {
+        this.pageId = pageId;
+        this.lemmaId = lemmaId;
+        this.rank = rank;
+    }
 }

@@ -8,6 +8,7 @@ import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Getter
 @Setter
@@ -28,7 +29,7 @@ public class LemmaEntity {
     private String lemma;
     @Column(name = "frequency")
     private Integer frequency;
-    @OneToMany(mappedBy = "lemmaId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "lemmaId", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<IndexEntity> indexEntityList = new ArrayList<>();
 
     public static LemmaEntity getLemmaEntity(SiteEntity siteId, String lemma) {
@@ -40,4 +41,16 @@ public class LemmaEntity {
         return lemmaEntity;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        LemmaEntity that = (LemmaEntity) o;
+        return Objects.equals(lemma, that.lemma);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(lemma);
+    }
 }

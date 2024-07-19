@@ -11,6 +11,8 @@ import searchengine.services.siteparser.PageNode;
 import javax.persistence.*;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Getter
@@ -34,6 +36,8 @@ public class PageEntity implements Serializable {
     private Integer statusCode;
     @Column(name = "content", columnDefinition = "MEDIUMTEXT")
     private String pageContent;
+    @OneToMany(mappedBy = "pageId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<IndexEntity> indexEntityList = new ArrayList<>();
 
     public static PageEntity mapToPageEntity(SiteEntity siteId, Response response, Document content) throws IOException {
         PageEntity pageEntity = new PageEntity();
