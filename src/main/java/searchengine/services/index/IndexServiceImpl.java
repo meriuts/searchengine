@@ -7,12 +7,16 @@ import searchengine.config.SitesList;
 import searchengine.dto.index.IndexErrorResponse;
 import searchengine.dto.index.IndexRequest;
 import searchengine.dto.index.IndexResponse;
+import searchengine.exception.ParsingException;
 import searchengine.model.SiteEntity;
 import searchengine.model.SiteStatus;
+import searchengine.repositories.IndexRepository;
+import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 import searchengine.services.siteparser.LinkCollector;
 import searchengine.services.siteparser.PageNodeFactory;
+import searchengine.services.siteparser.PageParser;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.ForkJoinPool;
@@ -23,8 +27,11 @@ import java.util.concurrent.TimeUnit;
 public class IndexServiceImpl implements IndexService {
     private final SitesList sites;
     private final PageNodeFactory pageNodeFactory;
+    private final PageParser pageParser;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
+    private final LemmaRepository lemmaRepository;
+    private final IndexRepository indexRepository;
     private ForkJoinPool pool;
 
     private ForkJoinPool getPoolInstance() {
@@ -41,6 +48,8 @@ public class IndexServiceImpl implements IndexService {
         if (pool.getActiveThreadCount() > 0) {
             return new IndexErrorResponse("Индексация уже запущена");
         }
+
+
         siteRepository.deleteAll();
 
         sites.getSites().forEach(site -> {
@@ -78,13 +87,11 @@ public class IndexServiceImpl implements IndexService {
 
     @Override
     public IndexResponse indexPage(IndexRequest url) {
-        return pageNodeFactory
-                .createPageNode(url.getUrl())
-                .parsePage(url.getUrl());
+        try {
+            pageParser.startParsingOnePage(url.getUrl());
+        } catch (ParsingException e) {
+            return new IndexErrorResponse(e.getMessage());
+        }
+        return new IndexResponse();
     }
-
-
-
-
-
 }

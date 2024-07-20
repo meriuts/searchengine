@@ -16,7 +16,7 @@ import java.util.Objects;
 @Entity
 @Table(
         name = "lemmas",
-        indexes = @Index(name = "fn_lemma_path", columnList = "lemma"))
+        indexes = @Index(name = "fn_lemma_path", columnList = "site_id, lemma"))
 public class LemmaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
