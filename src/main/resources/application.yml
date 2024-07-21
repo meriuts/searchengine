@@ -17,10 +17,9 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
-        jdbc:
-          batch-size: 50
-          fetch-size: 100
-          order-inserts: true
+        generate_statistics: true
+        order_inserts: true
+        jdbc.batch_size: 10
     hibernate:
       ddl-auto: update
     show-sql: true
@@ -39,7 +38,7 @@ indexing-settings:
 #      name: PlayBack.Ru
 #    - url: https://opt-opt-opt.ru
 #      name: Opt.Ru
-    - url: https://example.q-parser.ru
-      name: Q-Parser
+#    - url: https://example.q-parser.ru
+#      name: Q-Parser
     - url: https://obuv-tut2000.ru
       name: Obuv-tut2000

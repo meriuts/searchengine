@@ -2,7 +2,9 @@ package searchengine.repositories;
 
 import org.apache.catalina.LifecycleState;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import searchengine.model.LemmaEntity;
 import searchengine.model.SiteEntity;
@@ -17,6 +19,4 @@ public interface LemmaRepository extends JpaRepository<LemmaEntity, Integer> {
 
     @Query("SELECT l FROM LemmaEntity l WHERE l.lemma IN :lemmas AND l.siteId = :siteId")
     List<LemmaEntity> findAllByLemmaInAndSiteId(Iterable<String> lemmas, SiteEntity siteId);
-
-
 }

@@ -17,7 +17,8 @@ import javax.persistence.*;
         uniqueConstraints = @UniqueConstraint(name = "uniqueLemma", columnNames = {"lemma_id", "page_id"}))
 public class IndexEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @SequenceGenerator(name = "sequence_id_auto_gen_index", allocationSize = 10)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
     @Column(name = "id")
     private Integer id;
     @ManyToOne

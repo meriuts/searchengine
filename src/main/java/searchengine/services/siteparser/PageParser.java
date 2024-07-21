@@ -1,7 +1,9 @@
 package searchengine.services.siteparser;
 
 import com.sun.xml.bind.v2.TODO;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.jsoup.Connection.Response;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -16,6 +18,7 @@ import searchengine.config.SitesList;
 import searchengine.dto.index.IndexErrorResponse;
 import searchengine.dto.index.IndexResponse;
 import searchengine.exception.ParsingException;
+import searchengine.exception.StopTaskException;
 import searchengine.model.IndexEntity;
 import searchengine.model.LemmaEntity;
 import searchengine.model.PageEntity;
@@ -23,14 +26,18 @@ import searchengine.model.SiteEntity;
 import searchengine.repositories.*;
 import searchengine.services.contentparser.LemmaFinder;
 
+import javax.persistence.EntityManager;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Service
+@Getter
+@Setter
 @RequiredArgsConstructor
 @CacheConfig(cacheManager = "redisCacheManager")
 public class PageParser {
@@ -41,10 +48,14 @@ public class PageParser {
     private final IndexRepository indexRepository;
     private final LemmaRepositoryNative lemmaRepositoryNative;
     private final String urlFormat = "https?://[^,\\s?]+(?<!\\.(?:jpg|png|gif|pdf))(?<!#)";
+    private AtomicBoolean isStopped = new AtomicBoolean(false);
 
 //    @Cacheable(value = "parsedUrl", key = "#url")
     public Set<String> startParsing(String url) {
         try {
+            if (isStopped.get()) {
+                throw new StopTaskException("Выполнение задач парсинга остановлено пользователем");
+            }
             Thread.sleep(200);
             System.out.println("parse " + url);
 
@@ -101,12 +112,12 @@ public class PageParser {
 
 
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     private void saveLemmaAndIndex(PageEntity pageEntity, Map<String, Integer> lemmaPart) {
         //сделать в два шага - сохранить лемму - потом сохранить индекс - иначе сейчас по лемме тянется куча интексов
         // сделать настройик чтобы избежать дедлока
+        //разобраться как оставновить все потоки - сейчас потоки проложают дорабатывать
         List<LemmaEntity> lemmaEntityList = new ArrayList<>();
-
         for (Map.Entry<String, Integer> lemmaEntry : lemmaPart.entrySet()) {
             LemmaEntity lemmaEntity = LemmaEntity.getLemmaEntity(pageEntity.getSiteId(), lemmaEntry.getKey());
             IndexEntity indexEntity = new IndexEntity(pageEntity, lemmaEntity, lemmaEntry.getValue());
@@ -120,20 +131,28 @@ public class PageParser {
         );
 
         lemmaEntityList.removeAll(existingLemmaEntities);
-
-        for (LemmaEntity existingLemma : existingLemmaEntities) {
-            existingLemma.setFrequency(existingLemma.getFrequency() + 1);
-            IndexEntity indexEntity = new IndexEntity(
-                    pageEntity,
-                    existingLemma,
-                    lemmaPart.get(existingLemma.getLemma())
-            );
-            List<IndexEntity> indexEntityList = existingLemma.getIndexEntityList();
-            indexEntityList.add(indexEntity);
-        }
-        lemmaEntityList.addAll(existingLemmaEntities);
-
         lemmaRepository.saveAll(lemmaEntityList);
+
+//        for (LemmaEntity existingLemma : existingLemmaEntities) {
+//            existingLemma.setFrequency(existingLemma.getFrequency() + 1);
+////            IndexEntity indexEntity = new IndexEntity(
+////                    pageEntity,
+////                    existingLemma,
+////                    lemmaPart.get(existingLemma.getLemma())
+////            );
+////            List<IndexEntity> indexEntityList = existingLemma.getIndexEntityList();
+////            indexEntityList.add(indexEntity);
+//        }
+//        lemmaEntityList.addAll(existingLemmaEntities);
+//
+//
+//        List<IndexEntity> indexEntityList = new ArrayList<>();
+//        for (LemmaEntity lemmaEntity : savedLemmaList) {
+//            IndexEntity indexEntity = new IndexEntity(pageEntity, lemmaEntity, lemmaPart.get(lemmaEntity.getLemma()));
+//            indexEntityList.add(indexEntity);
+//        }
+//
+//        indexRepository.saveAll(indexEntityList);
     }
 
     private List<Map<String, Integer>> getLemmaPartList(Map<String, Integer> lemmas) {

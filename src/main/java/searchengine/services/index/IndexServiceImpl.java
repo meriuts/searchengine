@@ -44,6 +44,7 @@ public class IndexServiceImpl implements IndexService {
     @Override
     @CacheEvict(value = {"parsedUrl", "page", "site"}, allEntries = true)
     public IndexResponse startIndexing() {
+        pageParser.getIsStopped().set(false);
         pool = getPoolInstance();
         if (pool.getActiveThreadCount() > 0) {
             return new IndexErrorResponse("Индексация уже запущена");
@@ -65,12 +66,15 @@ public class IndexServiceImpl implements IndexService {
     public IndexResponse stopIndexing() {
         pool = getPoolInstance();
         if (pool.getActiveThreadCount() > 0) {
+            pool.shutdown();
             pool.shutdownNow();
             try {
                 pool.awaitTermination(5, TimeUnit.SECONDS);
             } catch (InterruptedException ex) {
                 throw new RuntimeException(ex);
             }
+
+            pageParser.getIsStopped().set(true);
 
             for (SiteEntity siteEntity : siteRepository.findAll()) {
                 if(siteEntity.getStatus() != SiteStatus.INDEXED) {

@@ -5,12 +5,14 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.RecursiveAction;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class LinkCollector extends RecursiveAction {
     private final String url;
     private final PageNodeFactory pageNodeFactory;
+
 
 
     public LinkCollector(String url, PageNodeFactory pageNodeFactory) {
