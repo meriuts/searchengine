@@ -114,9 +114,6 @@ public class PageParser {
 
     @Transactional
     private void saveLemmaAndIndex(PageEntity pageEntity, Map<String, Integer> lemmaPart) {
-        //сделать в два шага - сохранить лемму - потом сохранить индекс - иначе сейчас по лемме тянется куча интексов
-        // сделать настройик чтобы избежать дедлока
-        //разобраться как оставновить все потоки - сейчас потоки проложают дорабатывать
         List<LemmaEntity> lemmaEntityList = new ArrayList<>();
         for (Map.Entry<String, Integer> lemmaEntry : lemmaPart.entrySet()) {
             LemmaEntity lemmaEntity = LemmaEntity.getLemmaEntity(pageEntity.getSiteId(), lemmaEntry.getKey());
