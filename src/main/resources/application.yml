@@ -12,12 +12,12 @@ spring:
     url: jdbc:mysql://localhost:3306/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      maximum-pool-size: 20
+#      maximum-pool-size: 100
   jpa:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
-        generate_statistics: true
+        generate_statistics: false
         order_inserts: true
         jdbc.batch_size: 10
     hibernate:

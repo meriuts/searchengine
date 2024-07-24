@@ -3,6 +3,7 @@ package searchengine.services.index;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.SitesList;
 import searchengine.dto.index.IndexErrorResponse;
 import searchengine.dto.index.IndexRequest;
@@ -50,8 +51,7 @@ public class IndexServiceImpl implements IndexService {
             return new IndexErrorResponse("Индексация уже запущена");
         }
 
-
-        siteRepository.deleteAll();
+        cleanDataInAllRepository();
 
         sites.getSites().forEach(site -> {
             SiteEntity siteEntity = SiteEntity.mapToSiteEntity(site, SiteStatus.INDEXING);
@@ -97,5 +97,13 @@ public class IndexServiceImpl implements IndexService {
             return new IndexErrorResponse(e.getMessage());
         }
         return new IndexResponse();
+    }
+
+    @Transactional
+    private void  cleanDataInAllRepository() {
+        indexRepository.cleanTable();
+        lemmaRepository.cleanTable();
+        pageRepository.cleanTable();
+        siteRepository.deleteAll();
     }
 }

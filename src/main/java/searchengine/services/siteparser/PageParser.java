@@ -8,6 +8,7 @@ import org.jsoup.Connection.Response;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
+import org.springframework.beans.BeanUtils;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,7 @@ public class PageParser {
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
     private final LemmaRepositoryNative lemmaRepositoryNative;
+    private final IndexRepositoryNative indexRepositoryNative;
     private final String urlFormat = "https?://[^,\\s?]+(?<!\\.(?:jpg|png|gif|pdf))(?<!#)";
     private AtomicBoolean isStopped = new AtomicBoolean(false);
 
@@ -81,16 +83,11 @@ public class PageParser {
                 throw new ParsingException("Сайт не был индексирован");
             }
 
-            if (pageRepository.findByPathAndSiteId(path, siteEntity).isPresent()) {
-                throw new ParsingException("Страница сайта уже проиндексирована");
-            }
-
             Response response = executePageInfo(url);
             Document content = response.parse();
             PageEntity pageEntity = PageEntity.mapToPageEntity(siteEntity, response, content);
 
             Map<String, Integer> lemmas = LemmaFinder.getInstance().collectLemmas(pageEntity.getPageContent());
-            //возможно нне нужно тут еще плодить потоки а сделать просто в цикле
             List<Map<String, Integer>> lemmaPartList = getLemmaPartList(lemmas);
 
             save(pageEntity, lemmaPartList);
@@ -101,7 +98,7 @@ public class PageParser {
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRED)
+    @Transactional
     private void save(PageEntity pageEntity, List<Map<String, Integer>> lemmaPartList) {
         PageEntity page = pageRepository.save(pageEntity);
         for (Map<String, Integer> lemmaPart : lemmaPartList) {
@@ -111,49 +108,33 @@ public class PageParser {
     }
 
 
-
     @Transactional
     private void saveLemmaAndIndex(PageEntity pageEntity, Map<String, Integer> lemmaPart) {
         List<LemmaEntity> lemmaEntityList = new ArrayList<>();
+        List<IndexEntity> indsexEntityList = new ArrayList<>();
         for (Map.Entry<String, Integer> lemmaEntry : lemmaPart.entrySet()) {
             LemmaEntity lemmaEntity = LemmaEntity.getLemmaEntity(pageEntity.getSiteId(), lemmaEntry.getKey());
-            IndexEntity indexEntity = new IndexEntity(pageEntity, lemmaEntity, lemmaEntry.getValue());
-            lemmaEntity.getIndexEntityList().add(indexEntity);
+            // на этот метод кэш нужен - нужно правильно настроить
+            // сейчас сохраняется много дуюликатов лемм - нужно поставить ограничения на таблицы индекс и леммы
+            //это долгая операция - много лемм потому что - подумать как оптимизировать - прям очень долго получается
+            Optional<LemmaEntity> existingLemma =
+                    lemmaRepository.findByLemmaAndSiteId(lemmaEntry.getKey(), pageEntity.getSiteId());
+            if(existingLemma.isPresent()) {
+                lemmaEntity = existingLemma.get();
+                lemmaEntity.setFrequency(lemmaEntity.getFrequency() + 1);
+            }
             lemmaEntityList.add(lemmaEntity);
+
+            IndexEntity indexEntity = new IndexEntity(pageEntity, lemmaEntity, lemmaEntry.getValue());
+            indsexEntityList.add(indexEntity);
         }
-
-        List<LemmaEntity> existingLemmaEntities = lemmaRepositoryNative.findAllByLemmaInAndSiteIdForUpdate(
-                lemmaPart.keySet(),
-                pageEntity.getSiteId().getId()
-        );
-
-        lemmaEntityList.removeAll(existingLemmaEntities);
         lemmaRepository.saveAll(lemmaEntityList);
-
-//        for (LemmaEntity existingLemma : existingLemmaEntities) {
-//            existingLemma.setFrequency(existingLemma.getFrequency() + 1);
-////            IndexEntity indexEntity = new IndexEntity(
-////                    pageEntity,
-////                    existingLemma,
-////                    lemmaPart.get(existingLemma.getLemma())
-////            );
-////            List<IndexEntity> indexEntityList = existingLemma.getIndexEntityList();
-////            indexEntityList.add(indexEntity);
-//        }
-//        lemmaEntityList.addAll(existingLemmaEntities);
-//
-//
-//        List<IndexEntity> indexEntityList = new ArrayList<>();
-//        for (LemmaEntity lemmaEntity : savedLemmaList) {
-//            IndexEntity indexEntity = new IndexEntity(pageEntity, lemmaEntity, lemmaPart.get(lemmaEntity.getLemma()));
-//            indexEntityList.add(indexEntity);
-//        }
-//
-//        indexRepository.saveAll(indexEntityList);
+        indexRepositoryNative.insertBatchIndex(indsexEntityList);
+//        indexRepository.saveAll(indsexEntityList);
     }
 
     private List<Map<String, Integer>> getLemmaPartList(Map<String, Integer> lemmas) {
-        int part = 100;
+        int part = 10;
         int total = lemmas.entrySet().size();
         List<Map.Entry<String, Integer>> entryLemmaList = lemmas.entrySet().stream().toList();
         List<Map<String, Integer>> lemmaPartList = IntStream

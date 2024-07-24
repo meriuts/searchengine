@@ -19,8 +19,7 @@ import java.util.Objects;
         indexes = @Index(name = "fn_lemma_path", columnList = "site_id, lemma"))
 public class LemmaEntity {
     @Id
-    @SequenceGenerator(name = "sequence_id_auto_gen_lemma", allocationSize = 10)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Integer id;
     @ManyToOne

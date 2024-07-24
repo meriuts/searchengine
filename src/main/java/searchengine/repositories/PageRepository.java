@@ -2,8 +2,10 @@ package searchengine.repositories;
 
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 
@@ -20,5 +22,9 @@ public interface PageRepository extends JpaRepository<PageEntity, Integer> {
 
     @Query("SELECT p FROM PageEntity p WHERE p.path LIKE %:path% AND p.siteId = :siteId")
     PageEntity deleteByPathAndSiteId(String path, SiteEntity siteId);
+    @Transactional
+    @Modifying
+    @Query(value = "DELETE FROM pages p WHERE p.id > -1", nativeQuery = true)
+    void cleanTable();
 
 }

@@ -18,7 +18,7 @@ import javax.persistence.*;
 public class IndexEntity {
     @Id
     @SequenceGenerator(name = "sequence_id_auto_gen_index", allocationSize = 10)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Integer id;
     @ManyToOne
