@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.hibernate.annotations.SQLDelete;
 
 import javax.persistence.*;
+import java.io.Serializable;
 
 @Getter
 @Setter
@@ -15,16 +16,16 @@ import javax.persistence.*;
 @Table(
         name = "page_index",
         uniqueConstraints = @UniqueConstraint(name = "uniqueLemma", columnNames = {"lemma_id", "page_id"}))
-public class IndexEntity {
+public class IndexEntity implements Serializable {
     @Id
     @SequenceGenerator(name = "sequence_id_auto_gen_index", allocationSize = 10)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Integer id;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "page_id", referencedColumnName = "id")
     private PageEntity pageId;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lemma_id", referencedColumnName = "id")
     private LemmaEntity lemmaId;
     @Column(name = "lemma_rank")

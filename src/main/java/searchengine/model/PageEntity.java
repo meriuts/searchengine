@@ -27,7 +27,7 @@ public class PageEntity implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "site_id", referencedColumnName = "site_id")
     private SiteEntity siteId;
     @Column(name = "path", columnDefinition = "VARCHAR(255)")
@@ -36,7 +36,7 @@ public class PageEntity implements Serializable {
     private Integer statusCode;
     @Column(name = "content", columnDefinition = "MEDIUMTEXT")
     private String pageContent;
-    @OneToMany(mappedBy = "pageId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "pageId", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     private List<IndexEntity> indexEntityList = new ArrayList<>();
 
     public static PageEntity mapToPageEntity(SiteEntity siteId, Response response, Document content) throws IOException {

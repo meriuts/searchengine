@@ -1,7 +1,6 @@
 package searchengine.services.index;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.SitesList;
@@ -11,10 +10,7 @@ import searchengine.dto.index.IndexResponse;
 import searchengine.exception.ParsingException;
 import searchengine.model.SiteEntity;
 import searchengine.model.SiteStatus;
-import searchengine.repositories.IndexRepository;
-import searchengine.repositories.LemmaRepository;
-import searchengine.repositories.PageRepository;
-import searchengine.repositories.SiteRepository;
+import searchengine.repositories.*;
 import searchengine.services.siteparser.LinkCollector;
 import searchengine.services.siteparser.PageNodeFactory;
 import searchengine.services.siteparser.PageParser;
@@ -33,17 +29,17 @@ public class IndexServiceImpl implements IndexService {
     private final PageRepository pageRepository;
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
+    private final RedisRepository redisRepository;
     private ForkJoinPool pool;
 
     private ForkJoinPool getPoolInstance() {
-        if(pool == null || pool.isShutdown()) {
+        if (pool == null || pool.isShutdown()) {
             pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
         }
         return pool;
     }
 
     @Override
-    @CacheEvict(value = {"parsedUrl", "page", "site"}, allEntries = true)
     public IndexResponse startIndexing() {
         pageParser.getIsStopped().set(false);
         pool = getPoolInstance();
@@ -58,6 +54,9 @@ public class IndexServiceImpl implements IndexService {
             siteRepository.save(siteEntity);
             pool.execute(new LinkCollector(site.getUrl(), pageNodeFactory));
         });
+
+
+
 
         return new IndexResponse();
     }
@@ -77,14 +76,14 @@ public class IndexServiceImpl implements IndexService {
             pageParser.getIsStopped().set(true);
 
             for (SiteEntity siteEntity : siteRepository.findAll()) {
-                if(siteEntity.getStatus() != SiteStatus.INDEXED) {
+                if (siteEntity.getStatus() != SiteStatus.INDEXED) {
                     siteEntity.setErrorText("Индкесация остановлена пользователем");
                     siteEntity.setStatus(SiteStatus.FAILED);
                     siteEntity.setStatusTime(LocalDateTime.now());
                     siteRepository.save(siteEntity);
                 }
             }
-                return new IndexResponse();
+            return new IndexResponse();
         }
         return new IndexErrorResponse("Индексация не запущена");
     }
@@ -100,10 +99,11 @@ public class IndexServiceImpl implements IndexService {
     }
 
     @Transactional
-    private void  cleanDataInAllRepository() {
+    private void cleanDataInAllRepository() {
         indexRepository.cleanTable();
         lemmaRepository.cleanTable();
         pageRepository.cleanTable();
         siteRepository.deleteAll();
+        redisRepository.deleteAll();
     }
 }

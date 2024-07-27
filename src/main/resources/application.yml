@@ -1,3 +1,6 @@
+app:
+  message: page
+
 server:
   port: 8888
 
@@ -22,7 +25,7 @@ spring:
         jdbc.batch_size: 10
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
 
 
 
@@ -38,7 +41,7 @@ indexing-settings:
 #      name: PlayBack.Ru
 #    - url: https://opt-opt-opt.ru
 #      name: Opt.Ru
-#    - url: https://example.q-parser.ru
-#      name: Q-Parser
+    - url: https://example.q-parser.ru
+      name: Q-Parser
     - url: https://obuv-tut2000.ru
       name: Obuv-tut2000

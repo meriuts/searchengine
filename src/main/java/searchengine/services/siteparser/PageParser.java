@@ -1,6 +1,5 @@
 package searchengine.services.siteparser;
 
-import com.sun.xml.bind.v2.TODO;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -8,30 +7,28 @@ import org.jsoup.Connection.Response;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
-import org.springframework.beans.BeanUtils;
 import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
-import searchengine.dto.index.IndexErrorResponse;
-import searchengine.dto.index.IndexResponse;
 import searchengine.exception.ParsingException;
 import searchengine.exception.StopTaskException;
-import searchengine.model.IndexEntity;
-import searchengine.model.LemmaEntity;
-import searchengine.model.PageEntity;
-import searchengine.model.SiteEntity;
+import searchengine.message.RedisMessagePublisher;
+import searchengine.model.*;
 import searchengine.repositories.*;
 import searchengine.services.contentparser.LemmaFinder;
 
-import javax.persistence.EntityManager;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -49,10 +46,13 @@ public class PageParser {
     private final IndexRepository indexRepository;
     private final LemmaRepositoryNative lemmaRepositoryNative;
     private final IndexRepositoryNative indexRepositoryNative;
+    private final RedisRepository redisRepository;
+    private final RedisRepositoryImpl redisRepositoryImpl;
+    private final RedisMessagePublisher redisMessagePublisher;
     private final String urlFormat = "https?://[^,\\s?]+(?<!\\.(?:jpg|png|gif|pdf))(?<!#)";
     private AtomicBoolean isStopped = new AtomicBoolean(false);
 
-//    @Cacheable(value = "parsedUrl", key = "#url")
+    @Cacheable(value = "parsedUrl", key = "#url")
     public Set<String> startParsing(String url) {
         try {
             if (isStopped.get()) {
@@ -77,20 +77,33 @@ public class PageParser {
         }
 
         try {
-            String path = new URL(url).getPath();
             SiteEntity siteEntity = siteRepository.findByUrl(new URL(url).getHost());
             if (siteEntity == null) {
                 throw new ParsingException("Сайт не был индексирован");
             }
 
-            Response response = executePageInfo(url);
+            PageEntity p = pageRepository.findByPathAndSiteId(new URL(url).getPath(), siteEntity);
+            if (p != null) {
+                throw new ParsingException("Страница проиндексирован");
+            }
+
+            Response response = Jsoup.connect(url)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36")
+                    .referrer("https://ya.ru/")
+                    .execute();
+
             Document content = response.parse();
             PageEntity pageEntity = PageEntity.mapToPageEntity(siteEntity, response, content);
-
+            PageEntity page = savePage(pageEntity);
             Map<String, Integer> lemmas = LemmaFinder.getInstance().collectLemmas(pageEntity.getPageContent());
-            List<Map<String, Integer>> lemmaPartList = getLemmaPartList(lemmas);
 
-            save(pageEntity, lemmaPartList);
+            PageRedisEntity pageRedisEntity = PageRedisEntity.mapToPageMessage(page);
+            pageRedisEntity.setLemmas(lemmas);
+            PageRedisEntity savePageRedisEntity = redisRepository.save(pageRedisEntity);
+
+            redisMessagePublisher.publish(savePageRedisEntity.getPageRedisId());
+
+
 
             return findUrls(content);
         } catch (IOException ex) {
@@ -98,40 +111,41 @@ public class PageParser {
         }
     }
 
-    @Transactional
-    private void save(PageEntity pageEntity, List<Map<String, Integer>> lemmaPartList) {
-        PageEntity page = pageRepository.save(pageEntity);
-        for (Map<String, Integer> lemmaPart : lemmaPartList) {
-            saveLemmaAndIndex(page, lemmaPart);
+    public void initSaveLemmaAndIndex(String pageKey) {
+        PageRedisEntity pageRedisEntity = redisRepository.findById(pageKey).orElseThrow();
+
+        for (Map.Entry<String, Integer> lemmaEntry : pageRedisEntity.getLemmas().entrySet()) {
+                saveLemmaAndIndex(pageRedisEntity, lemmaEntry);
         }
-//        lemmaPartList.parallelStream().forEach(lemmaPart -> saveLemmaAndIndex(page, lemmaPart));
+
     }
 
 
     @Transactional
-    private void saveLemmaAndIndex(PageEntity pageEntity, Map<String, Integer> lemmaPart) {
-        List<LemmaEntity> lemmaEntityList = new ArrayList<>();
-        List<IndexEntity> indsexEntityList = new ArrayList<>();
-        for (Map.Entry<String, Integer> lemmaEntry : lemmaPart.entrySet()) {
-            LemmaEntity lemmaEntity = LemmaEntity.getLemmaEntity(pageEntity.getSiteId(), lemmaEntry.getKey());
-            // на этот метод кэш нужен - нужно правильно настроить
-            // сейчас сохраняется много дуюликатов лемм - нужно поставить ограничения на таблицы индекс и леммы
-            //это долгая операция - много лемм потому что - подумать как оптимизировать - прям очень долго получается
-            Optional<LemmaEntity> existingLemma =
-                    lemmaRepository.findByLemmaAndSiteId(lemmaEntry.getKey(), pageEntity.getSiteId());
-            if(existingLemma.isPresent()) {
-                lemmaEntity = existingLemma.get();
-                lemmaEntity.setFrequency(lemmaEntity.getFrequency() + 1);
-            }
-            lemmaEntityList.add(lemmaEntity);
-
-            IndexEntity indexEntity = new IndexEntity(pageEntity, lemmaEntity, lemmaEntry.getValue());
-            indsexEntityList.add(indexEntity);
+    private void saveLemmaAndIndex( PageRedisEntity pageRedisEntity, Map.Entry<String, Integer> lemma) {
+        LemmaEntity lemmaEntity = LemmaEntity.getLemmaEntity(pageRedisEntity.getSiteId(), lemma.getKey());
+        LemmaEntity existLemmaEntity = lemmaRepository.findByLemmaAndSiteId(lemma.getKey(), pageRedisEntity.getSiteId());
+        if(existLemmaEntity != null) {
+            existLemmaEntity.setFrequency(lemmaEntity.getFrequency() + 1);
+            lemmaEntity = existLemmaEntity;
         }
-        lemmaRepository.saveAll(lemmaEntityList);
-        indexRepositoryNative.insertBatchIndex(indsexEntityList);
-//        indexRepository.saveAll(indsexEntityList);
+
+        LemmaEntity savedLemma = saveLemma(lemmaEntity);
+
+//        IndexEntity indexEntity = new IndexEntity(pageRedisEntity, savedLemma, lemma.getValue());
+//        indexRepository.save(indexEntity);
     }
+
+    @CachePut(value = "parsedUrl", key = "#pageEntity.path + ':' + #pageEntity.siteId.id", unless = "#result == null")
+    private PageEntity savePage(PageEntity pageEntity) {
+        return pageRepository.save(pageEntity);
+    }
+
+    @CachePut(value = "lemma", key = "#lemmaEntity.lemma + ':' + #lemmaEntity.siteId.id", unless = "#result == null")
+    private LemmaEntity saveLemma(LemmaEntity lemmaEntity) {
+        return lemmaRepository.save(lemmaEntity);
+    }
+
 
     private List<Map<String, Integer>> getLemmaPartList(Map<String, Integer> lemmas) {
         int part = 10;

@@ -21,6 +21,7 @@ public class LinkCollector extends RecursiveAction {
     }
     @Override
     protected void compute() {
+//        System.out.printf("Task %s execute in thread %s%n", this, Thread.currentThread().getName());
         PageNode pageNode = pageNodeFactory.createPageNode(url);
         pageNode.parsePage();
 
