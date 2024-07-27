@@ -30,10 +30,10 @@ public class PageNode {
     }
 
     public void parsePage() {
-//        Cache cache = redisCacheManager.getCache("parsedUrl");
-//        if (cache != null && cache.get(url) != null) {
-//            return;
-//        }
+        Cache cache = redisCacheManager.getCache("parsedUrl");
+        if (cache != null && cache.get(url) != null) {
+            return;
+        }
         childUrls.addAll(pageParser.startParsing(url));
     }
 }

@@ -31,10 +31,10 @@ public class SiteEntity implements Serializable {
     private String url;
     @Column(name = "name", columnDefinition = "VARCHAR(255)")
     private String name;
-    @OneToMany(mappedBy = "siteId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "siteId", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     @ToString.Exclude
     private List<PageEntity> pageEntityList = new ArrayList<>();
-    @OneToMany(mappedBy = "siteId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "siteId", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     private List<LemmaEntity> lemmaEntityList = new ArrayList<>();
 
     public static SiteEntity mapToSiteEntity(Site site, SiteStatus status) {

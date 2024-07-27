@@ -1,6 +1,5 @@
 package searchengine.services.siteparser;
 
-import com.sun.xml.bind.v2.TODO;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -9,28 +8,27 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
-import searchengine.dto.index.IndexErrorResponse;
-import searchengine.dto.index.IndexResponse;
 import searchengine.exception.ParsingException;
 import searchengine.exception.StopTaskException;
-import searchengine.model.IndexEntity;
-import searchengine.model.LemmaEntity;
-import searchengine.model.PageEntity;
-import searchengine.model.SiteEntity;
+import searchengine.message.RedisMessagePublisher;
+import searchengine.model.*;
 import searchengine.repositories.*;
 import searchengine.services.contentparser.LemmaFinder;
 
-import javax.persistence.EntityManager;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -47,10 +45,14 @@ public class PageParser {
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
     private final LemmaRepositoryNative lemmaRepositoryNative;
+    private final IndexRepositoryNative indexRepositoryNative;
+    private final RedisRepository redisRepository;
+    private final RedisRepositoryImpl redisRepositoryImpl;
+    private final RedisMessagePublisher redisMessagePublisher;
     private final String urlFormat = "https?://[^,\\s?]+(?<!\\.(?:jpg|png|gif|pdf))(?<!#)";
     private AtomicBoolean isStopped = new AtomicBoolean(false);
 
-//    @Cacheable(value = "parsedUrl", key = "#url")
+    @Cacheable(value = "parsedUrl", key = "#url")
     public Set<String> startParsing(String url) {
         try {
             if (isStopped.get()) {
@@ -75,25 +77,33 @@ public class PageParser {
         }
 
         try {
-            String path = new URL(url).getPath();
             SiteEntity siteEntity = siteRepository.findByUrl(new URL(url).getHost());
             if (siteEntity == null) {
                 throw new ParsingException("Сайт не был индексирован");
             }
 
-            if (pageRepository.findByPathAndSiteId(path, siteEntity).isPresent()) {
-                throw new ParsingException("Страница сайта уже проиндексирована");
+            PageEntity p = pageRepository.findByPathAndSiteId(new URL(url).getPath(), siteEntity);
+            if (p != null) {
+                throw new ParsingException("Страница проиндексирован");
             }
 
-            Response response = executePageInfo(url);
+            Response response = Jsoup.connect(url)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36")
+                    .referrer("https://ya.ru/")
+                    .execute();
+
             Document content = response.parse();
             PageEntity pageEntity = PageEntity.mapToPageEntity(siteEntity, response, content);
-
+            PageEntity page = savePage(pageEntity);
             Map<String, Integer> lemmas = LemmaFinder.getInstance().collectLemmas(pageEntity.getPageContent());
-            //возможно нне нужно тут еще плодить потоки а сделать просто в цикле
-            List<Map<String, Integer>> lemmaPartList = getLemmaPartList(lemmas);
 
-            save(pageEntity, lemmaPartList);
+            PageRedisEntity pageRedisEntity = PageRedisEntity.mapToPageMessage(page);
+            pageRedisEntity.setLemmas(lemmas);
+            PageRedisEntity savePageRedisEntity = redisRepository.save(pageRedisEntity);
+
+            redisMessagePublisher.publish(savePageRedisEntity.getPageRedisId());
+
+
 
             return findUrls(content);
         } catch (IOException ex) {
@@ -101,62 +111,44 @@ public class PageParser {
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRED)
-    private void save(PageEntity pageEntity, List<Map<String, Integer>> lemmaPartList) {
-        PageEntity page = pageRepository.save(pageEntity);
-        for (Map<String, Integer> lemmaPart : lemmaPartList) {
-            saveLemmaAndIndex(page, lemmaPart);
-        }
-//        lemmaPartList.parallelStream().forEach(lemmaPart -> saveLemmaAndIndex(page, lemmaPart));
-    }
+    public void initSaveLemmaAndIndex(String pageKey) {
+        PageRedisEntity pageRedisEntity = redisRepository.findById(pageKey).orElseThrow();
 
+        for (Map.Entry<String, Integer> lemmaEntry : pageRedisEntity.getLemmas().entrySet()) {
+                saveLemmaAndIndex(pageRedisEntity, lemmaEntry);
+        }
+
+    }
 
 
     @Transactional
-    private void saveLemmaAndIndex(PageEntity pageEntity, Map<String, Integer> lemmaPart) {
-        //сделать в два шага - сохранить лемму - потом сохранить индекс - иначе сейчас по лемме тянется куча интексов
-        // сделать настройик чтобы избежать дедлока
-        //разобраться как оставновить все потоки - сейчас потоки проложают дорабатывать
-        List<LemmaEntity> lemmaEntityList = new ArrayList<>();
-        for (Map.Entry<String, Integer> lemmaEntry : lemmaPart.entrySet()) {
-            LemmaEntity lemmaEntity = LemmaEntity.getLemmaEntity(pageEntity.getSiteId(), lemmaEntry.getKey());
-            IndexEntity indexEntity = new IndexEntity(pageEntity, lemmaEntity, lemmaEntry.getValue());
-            lemmaEntity.getIndexEntityList().add(indexEntity);
-            lemmaEntityList.add(lemmaEntity);
+    private void saveLemmaAndIndex( PageRedisEntity pageRedisEntity, Map.Entry<String, Integer> lemma) {
+        LemmaEntity lemmaEntity = LemmaEntity.getLemmaEntity(pageRedisEntity.getSiteId(), lemma.getKey());
+        LemmaEntity existLemmaEntity = lemmaRepository.findByLemmaAndSiteId(lemma.getKey(), pageRedisEntity.getSiteId());
+        if(existLemmaEntity != null) {
+            existLemmaEntity.setFrequency(lemmaEntity.getFrequency() + 1);
+            lemmaEntity = existLemmaEntity;
         }
 
-        List<LemmaEntity> existingLemmaEntities = lemmaRepositoryNative.findAllByLemmaInAndSiteIdForUpdate(
-                lemmaPart.keySet(),
-                pageEntity.getSiteId().getId()
-        );
+        LemmaEntity savedLemma = saveLemma(lemmaEntity);
 
-        lemmaEntityList.removeAll(existingLemmaEntities);
-        lemmaRepository.saveAll(lemmaEntityList);
-
-//        for (LemmaEntity existingLemma : existingLemmaEntities) {
-//            existingLemma.setFrequency(existingLemma.getFrequency() + 1);
-////            IndexEntity indexEntity = new IndexEntity(
-////                    pageEntity,
-////                    existingLemma,
-////                    lemmaPart.get(existingLemma.getLemma())
-////            );
-////            List<IndexEntity> indexEntityList = existingLemma.getIndexEntityList();
-////            indexEntityList.add(indexEntity);
-//        }
-//        lemmaEntityList.addAll(existingLemmaEntities);
-//
-//
-//        List<IndexEntity> indexEntityList = new ArrayList<>();
-//        for (LemmaEntity lemmaEntity : savedLemmaList) {
-//            IndexEntity indexEntity = new IndexEntity(pageEntity, lemmaEntity, lemmaPart.get(lemmaEntity.getLemma()));
-//            indexEntityList.add(indexEntity);
-//        }
-//
-//        indexRepository.saveAll(indexEntityList);
+//        IndexEntity indexEntity = new IndexEntity(pageRedisEntity, savedLemma, lemma.getValue());
+//        indexRepository.save(indexEntity);
     }
 
+    @CachePut(value = "parsedUrl", key = "#pageEntity.path + ':' + #pageEntity.siteId.id", unless = "#result == null")
+    private PageEntity savePage(PageEntity pageEntity) {
+        return pageRepository.save(pageEntity);
+    }
+
+    @CachePut(value = "lemma", key = "#lemmaEntity.lemma + ':' + #lemmaEntity.siteId.id", unless = "#result == null")
+    private LemmaEntity saveLemma(LemmaEntity lemmaEntity) {
+        return lemmaRepository.save(lemmaEntity);
+    }
+
+
     private List<Map<String, Integer>> getLemmaPartList(Map<String, Integer> lemmas) {
-        int part = 100;
+        int part = 10;
         int total = lemmas.entrySet().size();
         List<Map.Entry<String, Integer>> entryLemmaList = lemmas.entrySet().stream().toList();
         List<Map<String, Integer>> lemmaPartList = IntStream

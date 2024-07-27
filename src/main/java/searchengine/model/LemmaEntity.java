@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,21 +17,21 @@ import java.util.Objects;
 @Entity
 @Table(
         name = "lemmas",
-        indexes = @Index(name = "fn_lemma_path", columnList = "site_id, lemma"))
-public class LemmaEntity {
+        indexes = @Index(name = "fn_lemma_path", columnList = "site_id, lemma"),
+        uniqueConstraints = @UniqueConstraint(name = "uniquePath", columnNames = {"lemma", "site_id"}))
+public class LemmaEntity implements Serializable {
     @Id
-    @SequenceGenerator(name = "sequence_id_auto_gen_lemma", allocationSize = 10)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Integer id;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "site_id", referencedColumnName = "site_id")
     private SiteEntity siteId;
     @Column(name = "lemma")
     private String lemma;
     @Column(name = "frequency")
     private Integer frequency;
-    @OneToMany(mappedBy = "lemmaId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "lemmaId", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     private List<IndexEntity> indexEntityList = new ArrayList<>();
 
     public static LemmaEntity getLemmaEntity(SiteEntity siteId, String lemma) {

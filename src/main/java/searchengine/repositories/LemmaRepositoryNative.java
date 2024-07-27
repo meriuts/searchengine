@@ -1,6 +1,9 @@
 package searchengine.repositories;
 
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Repository;
 import searchengine.model.LemmaEntity;
 
@@ -12,8 +15,9 @@ import java.util.Set;
 
 @Repository
 public class LemmaRepositoryNative {
-    @PersistenceContext
+    @Autowired
     EntityManager entityManager;
+//    @Retryable(value = Exception.class, maxAttempts = 3, backoff = @Backoff(delay = 1000))
     public List<LemmaEntity> findAllByLemmaInAndSiteIdForUpdate(Set<String> lemmaList, Integer siteId) {
         String sql = "SELECT l.* FROM lemmas l WHERE l.site_id = :siteId AND l.lemma IN :lemmaList FOR UPDATE";
         Query query = entityManager.createNativeQuery(sql, LemmaEntity.class);
@@ -22,5 +26,4 @@ public class LemmaRepositoryNative {
 
         return query.getResultList();
     }
-
 }
