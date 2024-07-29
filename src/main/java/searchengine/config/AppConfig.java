@@ -18,7 +18,6 @@ public class AppConfig {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(5);
         executor.setMaxPoolSize(50);
-        executor.setThreadNamePrefix("SaveLemmaAndIndexThread-");
         executor.initialize();
         return executor;
     }

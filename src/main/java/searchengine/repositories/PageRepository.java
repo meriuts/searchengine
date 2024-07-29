@@ -15,12 +15,12 @@ import java.util.Optional;
 @Repository
 public interface PageRepository extends JpaRepository<PageEntity, Integer> {
 
-    @Cacheable(value = "parsedUrl", key = "#path + ':' + #siteId.id", unless = "#result == null")
+    @Cacheable(value = "path", key = "#path + ':' + #siteId.id", unless = "#result == null")
     @Query("SELECT p FROM PageEntity p WHERE p.path LIKE %:path% AND p.siteId = :siteId")
     PageEntity findByPathAndSiteId(String path, SiteEntity siteId);
 
     @Transactional
-    @CacheEvict(value = "parsedUrl", allEntries = true)
+    @CacheEvict(cacheNames = {"parsedUrl", "path"}, allEntries = true)
     @Modifying
     @Query(value = "DELETE FROM pages p WHERE p.id > -1", nativeQuery = true)
     void cleanTable();

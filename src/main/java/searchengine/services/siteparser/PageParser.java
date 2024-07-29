@@ -17,8 +17,10 @@ import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.exception.ParsingException;
 import searchengine.exception.StopTaskException;
-import searchengine.message.RedisMessagePublisher;
-import searchengine.model.*;
+import searchengine.model.IndexEntity;
+import searchengine.model.LemmaEntity;
+import searchengine.model.PageEntity;
+import searchengine.model.SiteEntity;
 import searchengine.repositories.*;
 import searchengine.services.contentparser.LemmaFinder;
 
@@ -26,10 +28,8 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 @Service
 @Getter
@@ -43,14 +43,10 @@ public class PageParser {
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
     private final LemmaRepositoryNative lemmaRepositoryNative;
-    private final IndexRepositoryNative indexRepositoryNative;
-    private final RedisRepository redisRepository;
-    private final RedisRepositoryImpl redisRepositoryImpl;
-    private final RedisMessagePublisher redisMessagePublisher;
     private final String urlFormat = "https?://[^,\\s?]+(?<!\\.(?:jpg|png|gif|pdf))(?<!#)";
     private AtomicBoolean isStopped = new AtomicBoolean(false);
 
-    @Cacheable(value = "parsedUrl", key = "#url")
+    @Cacheable(value = "parsedUrl", key = "#url", unless = "#result == null")
     public Set<String> startParsing(String url) {
         try {
             if (isStopped.get()) {
@@ -95,7 +91,7 @@ public class PageParser {
             PageEntity page = savePage(pageEntity);
             Map<String, Integer> lemmas = LemmaFinder.getInstance().collectLemmas(pageEntity.getPageContent());
 
-            initSaveLemmaAndIndex(pageEntity, lemmas);
+            initSaveLemmaAndIndex(page, lemmas);
             return findUrls(content);
         } catch (IOException ex) {
             throw new RuntimeException(ex);
@@ -109,7 +105,6 @@ public class PageParser {
             saveLemmaAndIndex(pageEntity, lemmaEntry);
         }
     }
-
 
     @Transactional
     private void saveLemmaAndIndex(PageEntity pageEntity, Map.Entry<String, Integer> lemmaEntry) {
@@ -129,26 +124,15 @@ public class PageParser {
         indexRepository.save(indexEntity);
     }
 
-    @CachePut(value = "parsedUrl", key = "#pageEntity.path + ':' + #pageEntity.siteId.id", unless = "#result == null")
+    @CachePut(value = "path", key = "#pageEntity.path + ':' + #pageEntity.siteId.id", unless = "#result == null")
+    @Transactional
     private PageEntity savePage(PageEntity pageEntity) {
         return pageRepository.save(pageEntity);
     }
 
+    @Transactional
     private LemmaEntity saveLemma(LemmaEntity lemmaEntity) {
         return lemmaRepository.save(lemmaEntity);
-    }
-
-
-    private List<Map<String, Integer>> getLemmaPartList(Map<String, Integer> lemmas) {
-        int part = 10;
-        int total = lemmas.entrySet().size();
-        List<Map.Entry<String, Integer>> entryLemmaList = lemmas.entrySet().stream().toList();
-        List<Map<String, Integer>> lemmaPartList = IntStream
-                .range(0, (total + part - 1) / part)
-                .mapToObj(i -> entryLemmaList.subList(i * part, Math.min(total, (i + 1) * part)))
-                .map(subList -> subList.stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
-                .collect(Collectors.toList());
-        return lemmaPartList;
     }
 
     private Set<String> findUrls(Document content) {

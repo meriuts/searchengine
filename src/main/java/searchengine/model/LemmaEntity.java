@@ -34,6 +34,10 @@ public class LemmaEntity implements Serializable {
     @OneToMany(mappedBy = "lemmaId", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     private List<IndexEntity> indexEntityList = new ArrayList<>();
 
+    public LemmaEntity(Integer id) {
+        this.id = id;
+    }
+
     public static LemmaEntity getLemmaEntity(SiteEntity siteId, String lemma) {
         LemmaEntity lemmaEntity = new LemmaEntity();
         lemmaEntity.setSiteId(siteId);

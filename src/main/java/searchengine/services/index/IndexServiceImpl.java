@@ -10,7 +10,10 @@ import searchengine.dto.index.IndexResponse;
 import searchengine.exception.ParsingException;
 import searchengine.model.SiteEntity;
 import searchengine.model.SiteStatus;
-import searchengine.repositories.*;
+import searchengine.repositories.IndexRepository;
+import searchengine.repositories.LemmaRepository;
+import searchengine.repositories.PageRepository;
+import searchengine.repositories.SiteRepository;
 import searchengine.services.siteparser.LinkCollector;
 import searchengine.services.siteparser.PageNodeFactory;
 import searchengine.services.siteparser.PageParser;
@@ -29,7 +32,6 @@ public class IndexServiceImpl implements IndexService {
     private final PageRepository pageRepository;
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
-    private final RedisRepository redisRepository;
     private ForkJoinPool pool;
 
     private ForkJoinPool getPoolInstance() {
@@ -104,6 +106,5 @@ public class IndexServiceImpl implements IndexService {
         lemmaRepository.cleanTable();
         pageRepository.cleanTable();
         siteRepository.deleteAll();
-        redisRepository.deleteAll();
     }
 }

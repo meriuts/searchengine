@@ -6,9 +6,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.model.IndexEntity;
+import searchengine.model.LemmaEntity;
+
+import java.util.List;
 
 @Repository
 public interface IndexRepository extends JpaRepository<IndexEntity, Integer> {
+
+    @Query(value = "SELECT i.* FROM page_index i WHERE i.lemma_id = :lemmaId", nativeQuery = true)
+    List<IndexEntity> findAllByLemmaId(Integer lemmaId);
 
     @Transactional
     @Modifying
