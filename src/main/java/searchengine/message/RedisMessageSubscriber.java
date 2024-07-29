@@ -19,6 +19,5 @@ public class RedisMessageSubscriber implements MessageListener {
     }
     public void onMessage(final Message message, final byte[] pattern) {
         System.out.println("Message received: " + new String(message.getBody()));
-        pageParser.initSaveLemmaAndIndex(new String(message.getBody()));
     }
 }

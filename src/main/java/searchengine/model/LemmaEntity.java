@@ -18,7 +18,7 @@ import java.util.Objects;
 @Table(
         name = "lemmas",
         indexes = @Index(name = "fn_lemma_path", columnList = "site_id, lemma"),
-        uniqueConstraints = @UniqueConstraint(name = "uniquePath", columnNames = {"lemma", "site_id"}))
+        uniqueConstraints = @UniqueConstraint(name = "uniqueLemma", columnNames = {"lemma", "site_id"}))
 public class LemmaEntity implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

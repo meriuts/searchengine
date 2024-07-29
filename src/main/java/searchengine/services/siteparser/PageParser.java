@@ -10,6 +10,7 @@ import org.jsoup.select.Elements;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.Site;
@@ -24,10 +25,7 @@ import searchengine.services.contentparser.LemmaFinder;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -97,43 +95,38 @@ public class PageParser {
             PageEntity page = savePage(pageEntity);
             Map<String, Integer> lemmas = LemmaFinder.getInstance().collectLemmas(pageEntity.getPageContent());
 
-            PageRedisEntity pageRedisEntity = PageRedisEntity.mapToPageMessage(page);
-            pageRedisEntity.setLemmas(lemmas);
-            PageRedisEntity savePageRedisEntity = redisRepository.save(pageRedisEntity);
-
-            redisMessagePublisher.publish(savePageRedisEntity.getPageRedisId());
-
-
-
+            initSaveLemmaAndIndex(pageEntity, lemmas);
             return findUrls(content);
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
     }
 
-    public void initSaveLemmaAndIndex(String pageKey) {
-        PageRedisEntity pageRedisEntity = redisRepository.findById(pageKey).orElseThrow();
-
-        for (Map.Entry<String, Integer> lemmaEntry : pageRedisEntity.getLemmas().entrySet()) {
-                saveLemmaAndIndex(pageRedisEntity, lemmaEntry);
+    @Async("taskExecutor")
+    public void initSaveLemmaAndIndex(PageEntity pageEntity, Map<String, Integer> lemmas) {
+        System.out.println(Thread.currentThread().getName() + pageEntity.getPath());
+        for (Map.Entry<String, Integer> lemmaEntry : lemmas.entrySet()) {
+            saveLemmaAndIndex(pageEntity, lemmaEntry);
         }
-
     }
 
 
     @Transactional
-    private void saveLemmaAndIndex( PageRedisEntity pageRedisEntity, Map.Entry<String, Integer> lemma) {
-        LemmaEntity lemmaEntity = LemmaEntity.getLemmaEntity(pageRedisEntity.getSiteId(), lemma.getKey());
-        LemmaEntity existLemmaEntity = lemmaRepository.findByLemmaAndSiteId(lemma.getKey(), pageRedisEntity.getSiteId());
-        if(existLemmaEntity != null) {
-            existLemmaEntity.setFrequency(lemmaEntity.getFrequency() + 1);
-            lemmaEntity = existLemmaEntity;
+    private void saveLemmaAndIndex(PageEntity pageEntity, Map.Entry<String, Integer> lemmaEntry) {
+        LemmaEntity lemmaEntity = LemmaEntity.getLemmaEntity(pageEntity.getSiteId(), lemmaEntry.getKey());
+        Optional<LemmaEntity> existLemmaEntity = lemmaRepositoryNative.findLemmaForUpdate(
+                lemmaEntry.getKey(),
+                pageEntity.getSiteId().getId()).stream().findFirst();
+
+        if(existLemmaEntity.isPresent()) {
+            lemmaEntity = existLemmaEntity.get();
+            lemmaEntity.setFrequency(lemmaEntity.getFrequency() + 1);
         }
 
         LemmaEntity savedLemma = saveLemma(lemmaEntity);
 
-//        IndexEntity indexEntity = new IndexEntity(pageRedisEntity, savedLemma, lemma.getValue());
-//        indexRepository.save(indexEntity);
+        IndexEntity indexEntity = new IndexEntity(pageEntity, savedLemma, lemmaEntry.getValue());
+        indexRepository.save(indexEntity);
     }
 
     @CachePut(value = "parsedUrl", key = "#pageEntity.path + ':' + #pageEntity.siteId.id", unless = "#result == null")
@@ -141,7 +134,6 @@ public class PageParser {
         return pageRepository.save(pageEntity);
     }
 
-    @CachePut(value = "lemma", key = "#lemmaEntity.lemma + ':' + #lemmaEntity.siteId.id", unless = "#result == null")
     private LemmaEntity saveLemma(LemmaEntity lemmaEntity) {
         return lemmaRepository.save(lemmaEntity);
     }
@@ -157,13 +149,6 @@ public class PageParser {
                 .map(subList -> subList.stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
                 .collect(Collectors.toList());
         return lemmaPartList;
-    }
-
-    private Response executePageInfo(String url) throws IOException {
-        return Jsoup.connect(url)
-                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36")
-                .referrer("https://ya.ru/")
-                .execute();
     }
 
     private Set<String> findUrls(Document content) {

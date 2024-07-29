@@ -15,7 +15,7 @@ import java.io.Serializable;
 @Entity
 @Table(
         name = "page_index",
-        uniqueConstraints = @UniqueConstraint(name = "uniqueLemma", columnNames = {"lemma_id", "page_id"}))
+        uniqueConstraints = @UniqueConstraint(name = "uniquePage_index", columnNames = {"lemma_id", "page_id"}))
 public class IndexEntity implements Serializable {
     @Id
     @SequenceGenerator(name = "sequence_id_auto_gen_index", allocationSize = 10)

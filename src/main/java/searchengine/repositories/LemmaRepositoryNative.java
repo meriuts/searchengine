@@ -26,4 +26,14 @@ public class LemmaRepositoryNative {
 
         return query.getResultList();
     }
+    public List<LemmaEntity> findLemmaForUpdate(String lemma, Integer siteId) {
+        String sql = "SELECT l.* FROM lemmas l WHERE l.site_id = :siteId AND l.lemma = :lemma FOR UPDATE";
+        Query query = entityManager.createNativeQuery(sql, LemmaEntity.class);
+        query.setParameter("lemma", lemma);
+        query.setParameter("siteId", siteId);
+
+        return query.getResultList();
+    }
+
+
 }
