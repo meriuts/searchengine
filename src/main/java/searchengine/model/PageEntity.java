@@ -38,6 +38,8 @@ public class PageEntity implements Serializable {
     private String pageContent;
     @OneToMany(mappedBy = "pageId", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     private List<IndexEntity> indexEntityList = new ArrayList<>();
+    @Transient
+    private String pageTitle;
 
     public static PageEntity mapToPageEntity(SiteEntity siteId, Response response, Document content) throws IOException {
         PageEntity pageEntity = new PageEntity();
@@ -45,6 +47,7 @@ public class PageEntity implements Serializable {
         pageEntity.setPath(response.url().getPath());
         pageEntity.setStatusCode(response.statusCode());
         pageEntity.setPageContent(content.text());
+        pageEntity.setPageTitle(content.title());
 
         return pageEntity;
     }

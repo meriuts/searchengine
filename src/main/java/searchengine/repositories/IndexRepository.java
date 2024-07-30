@@ -16,6 +16,9 @@ public interface IndexRepository extends JpaRepository<IndexEntity, Integer> {
     @Query(value = "SELECT i.* FROM page_index i WHERE i.lemma_id = :lemmaId", nativeQuery = true)
     List<IndexEntity> findAllByLemmaId(Integer lemmaId);
 
+    @Query(value = "SELECT count(i.lemma_rank) FROM page_index i WHERE i.page_id = :pageId", nativeQuery = true)
+    Integer countAbsRelevant(Integer pageId);
+
     @Transactional
     @Modifying
     @Query(value = "DELETE FROM page_index i WHERE i.id > -1", nativeQuery = true)
