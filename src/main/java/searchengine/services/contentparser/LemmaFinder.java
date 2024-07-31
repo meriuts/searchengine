@@ -42,7 +42,7 @@ public class LemmaFinder {
         return lemmas;
     }
 
-    private List<String> getWords(String text) {
+    public List<String> getWords(String text) {
         return Arrays.stream(text.toLowerCase(Locale.ROOT)
                 .replaceAll("([^а-я\\s])", " ")
                 .trim()

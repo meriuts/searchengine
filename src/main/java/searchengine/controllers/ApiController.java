@@ -45,8 +45,8 @@ public class ApiController {
     public ResponseEntity<?> search(
             @RequestParam String query,
             @RequestParam (required = false, defaultValue = "all") String site,
-            @RequestParam(required = false, defaultValue = "0") String offset,
-            @RequestParam(required = false, defaultValue = "20") String limit) {
+            @RequestParam (required = false, defaultValue = "0") String offset,
+            @RequestParam (required = false, defaultValue = "20") String limit) {
         return ResponseEntity.ok(searchService.search(query, site, offset, limit));
     }
 }
