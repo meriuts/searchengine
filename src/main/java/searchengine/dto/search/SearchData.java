@@ -20,7 +20,7 @@ public class SearchData {
     private String uri;
     private String title;
     private String snippet;
-    private Integer absRelevance;
+    private Double absRelevance;
     private Double relevance;
 
     public static SearchData mapToSearchData(IndexEntity indexEntity, String query) {
@@ -31,35 +31,28 @@ public class SearchData {
         searchData.setUri(indexEntity.getPageId().getPath());
         searchData.setTitle(indexEntity.getPageId().getPageTitle());
         searchData.setSnippet(getSnippet(indexEntity.getPageId().getPageContent(), query));
-        searchData.setAbsRelevance(indexEntity.getRank());
+        searchData.setAbsRelevance(indexEntity.getRank() * 1.0);
         return searchData;
     }
 
-    //Этот метод очень долго работате - на 89 страниц - 46 секунд
+
     private static String getSnippet(String content, String query) {
         List<String> words = LemmaFinder.getInstance().getWords(query);
-        StringBuilder resultContent = new StringBuilder(content);
+        int startWordIndex = content.indexOf(words.get(0));
+        String subContent = content.substring(
+                Math.max(0, startWordIndex - 200),
+                Math.min(content.length(), startWordIndex + 200));
 
-        for (String word : words) {
-            Pattern pattern = Pattern.compile(word);
-            Matcher matcher = pattern.matcher(resultContent);
-            StringBuffer contentBuffer = new StringBuffer();
-            while (matcher.find()) {
-                matcher.appendReplacement(contentBuffer, "<b>" + matcher.group() + "<b>");
-            }
-            matcher.appendTail(contentBuffer);
-            resultContent = new StringBuilder(contentBuffer);
+        String regexWords = "(" + String.join("|", words) + ")";
+        Pattern pattern = Pattern.compile(regexWords, Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(subContent);
+
+        StringBuilder snippet = new StringBuilder();
+        while (matcher.find()) {
+            matcher.appendReplacement(snippet, "<b>" + matcher.group() + "</b>");
         }
+            matcher.appendTail(snippet);
 
-        Pattern pattern = Pattern.compile(words.get(0));
-        Matcher matcher = pattern.matcher(resultContent);
-        if (matcher.find()) {
-            int startWordIndex = matcher.start();
-
-            return resultContent.substring(
-                    Math.max(0, startWordIndex - 200),
-                    Math.min(content.length(), startWordIndex + 200));
-        }
-        return null;
+        return snippet.toString();
     }
 }

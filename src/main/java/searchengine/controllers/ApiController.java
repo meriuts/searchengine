@@ -2,6 +2,7 @@ package searchengine.controllers;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import searchengine.dto.index.IndexRequest;
 import searchengine.dto.index.IndexResponse;
@@ -46,7 +47,8 @@ public class ApiController {
             @RequestParam String query,
             @RequestParam (required = false, defaultValue = "all") String site,
             @RequestParam (required = false, defaultValue = "0") String offset,
-            @RequestParam (required = false, defaultValue = "20") String limit) {
+            @RequestParam (required = false, defaultValue = "19") String limit
+    ) {
         return ResponseEntity.ok(searchService.search(query, site, offset, limit));
     }
 }

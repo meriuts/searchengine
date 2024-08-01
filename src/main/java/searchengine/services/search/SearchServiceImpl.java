@@ -1,7 +1,6 @@
 package searchengine.services.search;
 
 import lombok.RequiredArgsConstructor;
-import org.apache.lucene.morphology.LuceneMorphology;
 import org.springframework.stereotype.Service;
 import searchengine.dto.search.SearchData;
 import searchengine.dto.search.SearchResponse;
@@ -12,8 +11,6 @@ import searchengine.repositories.LemmaRepository;
 import searchengine.services.contentparser.LemmaFinder;
 
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -33,11 +30,12 @@ public class SearchServiceImpl implements SearchService{
         }
 
         Collections.sort(lemmaEntityList, Comparator.comparing(LemmaEntity::getFrequency));
-        List<IndexEntity> indexEntityList = indexRepository.findAllByLemmaId(lemmaEntityList.get(0).getId());
+        List<IndexEntity> allIndexEntityList = indexRepository.findAllByLemmaId(lemmaEntityList.get(0).getId());
+        List<IndexEntity> indexEntityList = allIndexEntityList.subList(
+                0, Math.min(allIndexEntityList.size(), Integer.valueOf(limit)));
 
         Map<Integer, SearchData> searchDataMap = new HashMap<>();
         for (IndexEntity indexEntity : indexEntityList) {
-            //это можно же не делать - нужно проверять что список не пустой в объекте
             Optional<LemmaEntity> lemma = lemmaEntityList.stream()
                     .filter(l -> l.getId().compareTo(indexEntity.getLemmaId().getId()) == 0)
                     .findAny();
@@ -56,7 +54,15 @@ public class SearchServiceImpl implements SearchService{
             return new SearchResponse(true, 0, new ArrayList<>(), null);
         }
 
+        SearchData maxAbsRel = searchDataMap.values()
+                .stream().max(Comparator.comparing(SearchData::getAbsRelevance)).orElseThrow();
+
+        for (SearchData searchData : searchDataMap.values()) {
+            searchData.setRelevance(searchData.getAbsRelevance() / maxAbsRel.getAbsRelevance());
+        }
+
         List<SearchData> searchDataList = new ArrayList<>(searchDataMap.values());
+        searchDataList.sort(Comparator.comparing(SearchData::getRelevance).reversed());
 
         return new SearchResponse(true, searchDataList.size(), searchDataList, null);
     }
