@@ -1,6 +1,3 @@
-app:
-  message: page
-
 server:
   port: 8888
 
@@ -26,10 +23,6 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: false
-
-
-
-
 
 indexing-settings:
   sites:

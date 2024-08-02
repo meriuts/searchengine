@@ -6,6 +6,6 @@ import searchengine.dto.index.IndexResponse;
 public interface IndexService {
     IndexResponse startIndexing();
     IndexResponse stopIndexing();
-    IndexResponse indexPage(IndexRequest url);
+    IndexResponse indexPage(String url);
 
 }

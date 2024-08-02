@@ -6,8 +6,10 @@ import searchengine.dto.search.SearchData;
 import searchengine.dto.search.SearchResponse;
 import searchengine.model.IndexEntity;
 import searchengine.model.LemmaEntity;
+import searchengine.model.SiteEntity;
 import searchengine.repositories.IndexRepository;
 import searchengine.repositories.LemmaRepository;
+import searchengine.repositories.SiteRepository;
 import searchengine.services.contentparser.LemmaFinder;
 
 import java.util.*;
@@ -17,22 +19,31 @@ import java.util.*;
 public class SearchServiceImpl implements SearchService{
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
+    private final SiteRepository siteRepository;
     @Override
-    public SearchResponse search(String query, String site, String offset, String limit) {
+    public SearchResponse search(String query, String site, Integer offset, Integer limit) {
         if (query.isBlank()) {
             return new SearchResponse(false, null, null, "Пустой запрос");
         }
 
         Set<String> lemmas = LemmaFinder.getInstance().collectLemmas(query).keySet();
-        List<LemmaEntity> lemmaEntityList = lemmaRepository.findAllByLemmaIn(lemmas);
+        List<LemmaEntity> lemmaEntityList = new ArrayList<>();
+        if (!site.equals("all")) {
+            SiteEntity siteEntity = siteRepository.findByUrl(site);
+            lemmaEntityList.addAll(lemmaRepository.findAllByLemmaInAndSiteId(lemmas, siteEntity));
+        } else {
+            lemmaEntityList.addAll(lemmaRepository.findAllByLemmaIn(lemmas));
+        }
+
         if(lemmaEntityList.isEmpty()) {
             return new SearchResponse(true, 0, new ArrayList<>(), null);
         }
-
         Collections.sort(lemmaEntityList, Comparator.comparing(LemmaEntity::getFrequency));
+
         List<IndexEntity> allIndexEntityList = indexRepository.findAllByLemmaId(lemmaEntityList.get(0).getId());
         List<IndexEntity> indexEntityList = allIndexEntityList.subList(
-                0, Math.min(allIndexEntityList.size(), Integer.valueOf(limit)));
+                Math.min(offset, allIndexEntityList.size()),
+                Math.min(offset + limit, allIndexEntityList.size()));
 
         Map<Integer, SearchData> searchDataMap = new HashMap<>();
         for (IndexEntity indexEntity : indexEntityList) {
@@ -64,6 +75,7 @@ public class SearchServiceImpl implements SearchService{
         List<SearchData> searchDataList = new ArrayList<>(searchDataMap.values());
         searchDataList.sort(Comparator.comparing(SearchData::getRelevance).reversed());
 
-        return new SearchResponse(true, searchDataList.size(), searchDataList, null);
+        return new SearchResponse(true, allIndexEntityList.size(),
+                searchDataList.subList(0, Math.min(limit, searchDataList.size())), null);
     }
 }

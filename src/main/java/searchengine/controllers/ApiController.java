@@ -38,7 +38,7 @@ public class ApiController {
     }
 
     @PostMapping("/indexPage")
-    public ResponseEntity<IndexResponse> indexPage(@RequestBody IndexRequest url) {
+    public ResponseEntity<IndexResponse> indexPage(@RequestParam String url) {
         return ResponseEntity.ok(indexService.indexPage(url));
     }
 
@@ -46,8 +46,8 @@ public class ApiController {
     public ResponseEntity<?> search(
             @RequestParam String query,
             @RequestParam (required = false, defaultValue = "all") String site,
-            @RequestParam (required = false, defaultValue = "0") String offset,
-            @RequestParam (required = false, defaultValue = "19") String limit
+            @RequestParam (required = false, defaultValue = "0") Integer offset,
+            @RequestParam (required = false, defaultValue = "20") Integer limit
     ) {
         return ResponseEntity.ok(searchService.search(query, site, offset, limit));
     }

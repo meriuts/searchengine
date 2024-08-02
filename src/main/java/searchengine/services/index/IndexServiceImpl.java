@@ -91,9 +91,9 @@ public class IndexServiceImpl implements IndexService {
     }
 
     @Override
-    public IndexResponse indexPage(IndexRequest url) {
+    public IndexResponse indexPage(String url) {
         try {
-            pageParser.startParsingOnePage(url.getUrl());
+            pageParser.startParsingOnePage(url);
         } catch (ParsingException e) {
             return new IndexErrorResponse(e.getMessage());
         }
