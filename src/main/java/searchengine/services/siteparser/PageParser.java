@@ -27,6 +27,7 @@ import searchengine.services.contentparser.LemmaFinder;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -89,6 +90,10 @@ public class PageParser {
             Document content = response.parse();
             PageEntity pageEntity = PageEntity.mapToPageEntity(siteEntity, response, content);
             PageEntity page = savePage(pageEntity);
+
+            siteEntity.setStatusTime(LocalDateTime.now());
+            siteRepository.save(siteEntity);
+
             Map<String, Integer> lemmas = LemmaFinder.getInstance().collectLemmas(pageEntity.getPageContent());
 
             initSaveLemmaAndIndex(page, lemmas);

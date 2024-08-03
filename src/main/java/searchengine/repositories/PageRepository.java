@@ -19,6 +19,9 @@ public interface PageRepository extends JpaRepository<PageEntity, Integer> {
     @Query("SELECT p FROM PageEntity p WHERE p.path LIKE %:path% AND p.siteId = :siteId")
     PageEntity findByPathAndSiteId(String path, SiteEntity siteId);
 
+    @Query(value = "SELECT count(p.id) FROM pages p WHERE p.site_id = :siteId", nativeQuery = true)
+    Integer getAmountPageBySiteId(Integer siteId);
+
     @Transactional
     @CacheEvict(cacheNames = {"parsedUrl", "path"}, allEntries = true)
     @Modifying

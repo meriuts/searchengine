@@ -1,6 +1,7 @@
 package searchengine.services.index;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.SitesList;
@@ -8,6 +9,7 @@ import searchengine.dto.index.IndexErrorResponse;
 import searchengine.dto.index.IndexRequest;
 import searchengine.dto.index.IndexResponse;
 import searchengine.exception.ParsingException;
+import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.model.SiteStatus;
 import searchengine.repositories.IndexRepository;
@@ -18,7 +20,9 @@ import searchengine.services.siteparser.LinkCollector;
 import searchengine.services.siteparser.PageNodeFactory;
 import searchengine.services.siteparser.PageParser;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 
@@ -57,8 +61,7 @@ public class IndexServiceImpl implements IndexService {
             pool.execute(new LinkCollector(site.getUrl(), pageNodeFactory));
         });
 
-
-
+        siteRepository.findAll().forEach(siteEntity -> new Thread(() -> parsingStatus(siteEntity)).start());
 
         return new IndexResponse();
     }
@@ -98,6 +101,21 @@ public class IndexServiceImpl implements IndexService {
             return new IndexErrorResponse(e.getMessage());
         }
         return new IndexResponse();
+    }
+
+    private void parsingStatus(SiteEntity siteEntity) {
+        try {
+            while (siteEntity.getStatus().equals(SiteStatus.INDEXING)) {
+                Thread.sleep(10000);
+                Duration duration = Duration.between(siteEntity.getStatusTime(), LocalDateTime.now());
+                if(duration.getSeconds() > 300) {
+                    siteEntity.setStatus(SiteStatus.INDEXED);
+                    siteRepository.save(siteEntity);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException();
+        }
     }
 
     @Transactional

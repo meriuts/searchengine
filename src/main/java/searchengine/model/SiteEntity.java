@@ -2,6 +2,7 @@ package searchengine.model;
 
 
 import lombok.*;
+import org.hibernate.annotations.UpdateTimestamp;
 import searchengine.config.Site;
 
 import javax.persistence.*;
@@ -31,7 +32,7 @@ public class SiteEntity implements Serializable {
     private String url;
     @Column(name = "name", columnDefinition = "VARCHAR(255)")
     private String name;
-    @OneToMany(mappedBy = "siteId", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "siteId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude
     private List<PageEntity> pageEntityList = new ArrayList<>();
     @OneToMany(mappedBy = "siteId", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)

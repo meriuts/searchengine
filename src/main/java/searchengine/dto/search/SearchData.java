@@ -1,5 +1,6 @@
 package searchengine.dto.search;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.jsoup.Jsoup;
@@ -17,13 +18,15 @@ import java.util.regex.Pattern;
 @Data
 @NoArgsConstructor
 public class SearchData {
-    @Transient
+
+    @JsonIgnore
     private Integer pageId;
     private String site;
     private String siteName;
     private String uri;
     private String title;
     private String snippet;
+    @JsonIgnore
     private Double absRelevance;
     private Double relevance;
 

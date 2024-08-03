@@ -24,6 +24,9 @@ public interface LemmaRepository extends JpaRepository<LemmaEntity, Integer> {
     @Query("SELECT l FROM LemmaEntity l WHERE l.lemma IN :lemmas")
     List<LemmaEntity> findAllByLemmaIn(Iterable<String> lemmas);
 
+    @Query(value = "SELECT count(l.id) FROM lemmas l WHERE l.site_id = :siteId", nativeQuery = true)
+    Integer getAmountLemmaBySiteId(Integer siteId);
+
     @Transactional
     @CacheEvict(value = "lemma", allEntries = true)
     @Modifying
