@@ -1,4 +1,4 @@
-h3 Searchengine - это приложение для индексации сайтов.
+**Searchengine** - это приложение для индексации сайтов.
 
 **Приложение разработано на стеке:** Java, Spring Boot, MySQL, Redis, Docker
 
