@@ -16,10 +16,11 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
-public class SearchServiceImpl implements SearchService{
+public class SearchServiceImpl implements SearchService {
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
     private final SiteRepository siteRepository;
+
     @Override
     public SearchResponse search(String query, String site, Integer offset, Integer limit) {
         if (query.isBlank()) {
@@ -35,7 +36,7 @@ public class SearchServiceImpl implements SearchService{
             lemmaEntityList.addAll(lemmaRepository.findAllByLemmaIn(lemmas));
         }
 
-        if(lemmaEntityList.isEmpty()) {
+        if (lemmaEntityList.isEmpty()) {
             return new SearchResponse(true, 0, new ArrayList<>(), null);
         }
         Collections.sort(lemmaEntityList, Comparator.comparing(LemmaEntity::getFrequency));
@@ -51,7 +52,7 @@ public class SearchServiceImpl implements SearchService{
                     .filter(l -> l.getId().compareTo(indexEntity.getLemmaId().getId()) == 0)
                     .findAny();
             if (lemma.isPresent()) {
-                if(searchDataMap.containsKey(indexEntity.getPageId().getId())) {
+                if (searchDataMap.containsKey(indexEntity.getPageId().getId())) {
                     SearchData searchData = searchDataMap.get(indexEntity.getPageId().getId());
                     searchData.setAbsRelevance(searchData.getAbsRelevance() + indexEntity.getRank());
                     continue;

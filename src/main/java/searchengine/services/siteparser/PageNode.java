@@ -7,7 +7,6 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
-import searchengine.dto.index.IndexResponse;
 
 import java.util.HashSet;
 import java.util.Set;

@@ -1,8 +1,10 @@
 package searchengine.model;
 
 
-import lombok.*;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import searchengine.config.Site;
 
 import javax.persistence.*;

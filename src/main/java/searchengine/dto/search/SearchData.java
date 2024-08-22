@@ -4,10 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.jsoup.Jsoup;
-import org.springframework.data.annotation.Transient;
 import searchengine.model.IndexEntity;
 import searchengine.services.contentparser.LemmaFinder;
-import org.jsoup.nodes.Document;
 
 import java.util.HashMap;
 import java.util.List;
@@ -45,7 +43,7 @@ public class SearchData {
     }
 
 
-    private static  Map<String, String> getSnippet(String content, String query) {
+    private static Map<String, String> getSnippet(String content, String query) {
         Map<String, String> titleAndSnippet = new HashMap<>();
 
         int startTitle = content.indexOf("<title>") + "<title>".length();
@@ -70,7 +68,7 @@ public class SearchData {
         while (matcher.find()) {
             matcher.appendReplacement(snippet, "<b>" + matcher.group() + "</b>");
         }
-            matcher.appendTail(snippet);
+        matcher.appendTail(snippet);
 
         titleAndSnippet.put(title, snippet.toString());
 

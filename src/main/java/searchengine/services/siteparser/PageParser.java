@@ -112,13 +112,13 @@ public class PageParser {
     }
 
     @Transactional
-    private void saveLemmaAndIndex(PageEntity pageEntity, Map.Entry<String, Integer> lemmaEntry) {
+    public void saveLemmaAndIndex(PageEntity pageEntity, Map.Entry<String, Integer> lemmaEntry) {
         LemmaEntity lemmaEntity = LemmaEntity.getLemmaEntity(pageEntity.getSiteId(), lemmaEntry.getKey());
         Optional<LemmaEntity> existLemmaEntity = lemmaRepositoryNative.findLemmaForUpdate(
                 lemmaEntry.getKey(),
                 pageEntity.getSiteId().getId()).stream().findFirst();
 
-        if(existLemmaEntity.isPresent()) {
+        if (existLemmaEntity.isPresent()) {
             lemmaEntity = existLemmaEntity.get();
             lemmaEntity.setFrequency(lemmaEntity.getFrequency() + 1);
         }
@@ -131,12 +131,12 @@ public class PageParser {
 
     @CachePut(value = "path", key = "#pageEntity.path + ':' + #pageEntity.siteId.id", unless = "#result == null")
     @Transactional
-    private PageEntity savePage(PageEntity pageEntity) {
+    public PageEntity savePage(PageEntity pageEntity) {
         return pageRepository.save(pageEntity);
     }
 
     @Transactional
-    private LemmaEntity saveLemma(LemmaEntity lemmaEntity) {
+    public LemmaEntity saveLemma(LemmaEntity lemmaEntity) {
         return lemmaRepository.save(lemmaEntity);
     }
 

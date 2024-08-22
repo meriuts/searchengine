@@ -1,15 +1,12 @@
 package searchengine.services.index;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.SitesList;
 import searchengine.dto.index.IndexErrorResponse;
-import searchengine.dto.index.IndexRequest;
 import searchengine.dto.index.IndexResponse;
 import searchengine.exception.ParsingException;
-import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.model.SiteStatus;
 import searchengine.repositories.IndexRepository;
@@ -22,7 +19,6 @@ import searchengine.services.siteparser.PageParser;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 
@@ -108,7 +104,7 @@ public class IndexServiceImpl implements IndexService {
             while (siteEntity.getStatus().equals(SiteStatus.INDEXING)) {
                 Thread.sleep(10000);
                 Duration duration = Duration.between(siteEntity.getStatusTime(), LocalDateTime.now());
-                if(duration.getSeconds() > 300) {
+                if (duration.getSeconds() > 300) {
                     siteEntity.setStatus(SiteStatus.INDEXED);
                     siteRepository.save(siteEntity);
                 }
@@ -119,7 +115,7 @@ public class IndexServiceImpl implements IndexService {
     }
 
     @Transactional
-    private void cleanDataInAllRepository() {
+    public void cleanDataInAllRepository() {
         indexRepository.cleanTable();
         lemmaRepository.cleanTable();
         pageRepository.cleanTable();

@@ -15,6 +15,7 @@ public class LemmaFinder {
     private LemmaFinder(LuceneMorphology luceneMorphology) {
         this.luceneMorphology = luceneMorphology;
     }
+
     public static LemmaFinder getInstance() {
         LuceneMorphology morphology;
         try {
@@ -31,9 +32,9 @@ public class LemmaFinder {
                 .filter(word -> !word.isBlank())
                 .filter(word -> !isParticle(word))
                 .map(luceneMorphology::getNormalForms)
-                .flatMap(Collection :: stream).toList();
+                .flatMap(Collection::stream).toList();
         for (String normalWord : normalWords) {
-            if(lemmas.containsKey(normalWord)) {
+            if (lemmas.containsKey(normalWord)) {
                 lemmas.put(normalWord, lemmas.get(normalWord) + 1);
                 continue;
             }

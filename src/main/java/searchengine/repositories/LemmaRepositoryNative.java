@@ -1,7 +1,7 @@
 package searchengine.repositories;
 
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import searchengine.model.LemmaEntity;
 
@@ -10,9 +10,10 @@ import javax.persistence.Query;
 import java.util.List;
 
 @Repository
+@RequiredArgsConstructor
 public class LemmaRepositoryNative {
-    @Autowired
-    EntityManager entityManager;
+
+    private final EntityManager entityManager;
 
     public List<LemmaEntity> findLemmaForUpdate(String lemma, Integer siteId) {
         String sql = "SELECT l.* FROM lemmas l WHERE l.site_id = :siteId AND l.lemma = :lemma FOR UPDATE";

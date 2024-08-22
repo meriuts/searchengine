@@ -14,7 +14,6 @@ import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -31,7 +30,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public StatisticsResponse getStatistics() {
-        String[] statuses = { "INDEXED", "FAILED", "INDEXING" };
+        String[] statuses = {"INDEXED", "FAILED", "INDEXING"};
         String[] errors = {
                 "Ошибка индексации: главная страница сайта не доступна",
                 "Ошибка индексации: сайт не доступен",
@@ -56,7 +55,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             item.setLemmas(lemmas);
             item.setStatus(siteEntity.getStatus().name());
 
-            if(siteEntity.getErrorText() == null) {
+            if (siteEntity.getErrorText() == null) {
                 item.setError(errors[2]);
             } else {
                 item.setError(siteEntity.getErrorText());
